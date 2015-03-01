@@ -1,3 +1,5 @@
+此为 thinkjoy im的connector模块，基于Moquette扩展
+
 ## What is Moquette?
 
 Moquette aims to be a MQTT compliant broker. The broker supports QoS 0, QoS 1 and QoS 2.
