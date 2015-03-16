@@ -17,14 +17,18 @@ package org.eclipse.moquette.server;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Properties;
 import java.util.concurrent.TimeUnit;
+
 import org.fusesource.mqtt.client.BlockingConnection;
 import org.fusesource.mqtt.client.MQTT;
 import org.fusesource.mqtt.client.Message;
 import org.fusesource.mqtt.client.QoS;
 import org.fusesource.mqtt.client.Topic;
 import org.junit.After;
+
 import static org.junit.Assert.*;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -44,7 +48,7 @@ public class ServerIntegrationFuseTest {
     
     protected void startServer() throws IOException {
         m_server = new Server();
-        m_server.startServer();
+        m_server.startServer(new Properties());
     }
 
     @Before
@@ -69,7 +73,7 @@ public class ServerIntegrationFuseTest {
         }
 
         m_server.stopServer();
-        File dbFile = new File(Server.STORAGE_FILE_PATH);
+        File dbFile = new File(m_server.getProperties().getProperty(org.eclipse.moquette.commons.Constants.PERSISTENT_STORE_PROPERTY_NAME));
         if (dbFile.exists()) {
             dbFile.delete();
         }

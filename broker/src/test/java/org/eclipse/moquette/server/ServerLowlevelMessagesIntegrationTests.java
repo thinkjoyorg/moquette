@@ -17,8 +17,10 @@ package org.eclipse.moquette.server;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+
 import org.eclipse.moquette.proto.messages.AbstractMessage;
 import org.eclipse.moquette.proto.messages.AbstractMessage.QOSType;
 import org.eclipse.moquette.proto.messages.ConnAckMessage;
@@ -30,7 +32,9 @@ import org.fusesource.mqtt.client.Message;
 import org.fusesource.mqtt.client.QoS;
 import org.fusesource.mqtt.client.Topic;
 import org.junit.After;
+
 import static org.junit.Assert.*;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -46,10 +50,10 @@ public class ServerLowlevelMessagesIntegrationTests {
     Server m_server;
     Client m_client;
     MQTT m_subscriberDef;
-    
+
     protected void startServer() throws IOException {
         m_server = new Server();
-        m_server.startServer();
+        m_server.startServer(new Properties());
     }
 
     @Before
@@ -68,7 +72,7 @@ public class ServerLowlevelMessagesIntegrationTests {
         Thread.sleep(300); //to let the close event pass before server stop event
         m_server.stopServer();
         LOG.debug("After asked server to stop");
-        File dbFile = new File(Server.STORAGE_FILE_PATH);
+        File dbFile = new File(m_server.getProperties().getProperty(org.eclipse.moquette.commons.Constants.PERSISTENT_STORE_PROPERTY_NAME));
         if (dbFile.exists()) {
             dbFile.delete();
         }

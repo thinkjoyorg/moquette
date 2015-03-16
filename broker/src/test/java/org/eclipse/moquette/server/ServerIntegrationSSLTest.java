@@ -24,18 +24,25 @@ import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
+import java.util.Properties;
+
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
+
+import org.eclipse.moquette.commons.*;
+import org.eclipse.moquette.commons.Constants;
 import org.eclipse.paho.client.mqttv3.IMqttClient;
 import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttClientPersistence;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.persist.MqttDefaultFilePersistence;
 import org.junit.After;
+
 import static org.junit.Assert.assertFalse;
+
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -66,14 +73,20 @@ public class ServerIntegrationSSLTest {
         String file = getClass().getResource("/").getPath();
         System.setProperty("moquette.path", file);
         m_server = new Server();
-        m_server.startServer();
+
+        Properties sslProps = new Properties();
+        sslProps.put(org.eclipse.moquette.commons.Constants.SSL_PORT_PROPERTY_NAME, "8883");
+        sslProps.put(org.eclipse.moquette.commons.Constants.JKS_PATH_PROPERTY_NAME, "serverkeystore.jks");
+        sslProps.put(org.eclipse.moquette.commons.Constants.KEY_STORE_PASSWORD_PROPERTY_NAME, "passw0rdsrv");
+        sslProps.put(Constants.KEY_MANAGER_PASSWORD_PROPERTY_NAME, "passw0rdsrv");
+        m_server.startServer(sslProps);
     }
 
     @Before
     public void setUp() throws Exception {
-        File dbFile = new File(Server.STORAGE_FILE_PATH);
-        assertFalse(String.format("The DB storagefile %s already exists", Server.STORAGE_FILE_PATH), dbFile.exists());
-        
+        File dbFile = new File(org.eclipse.moquette.commons.Constants.DEFAULT_MOQUETTE_STORE_MAP_DB_FILENAME);
+        assertFalse(String.format("The DB storage file %s already exists",org.eclipse.moquette.commons.Constants.DEFAULT_MOQUETTE_STORE_MAP_DB_FILENAME), dbFile.exists());
+
         startServer();
 
         m_client = new MqttClient("ssl://localhost:8883", "TestClient", s_dataStore);
@@ -90,7 +103,7 @@ public class ServerIntegrationSSLTest {
         }
 
         m_server.stopServer();
-        File dbFile = new File(Server.STORAGE_FILE_PATH);
+        File dbFile = new File(m_server.getProperties().getProperty(org.eclipse.moquette.commons.Constants.PERSISTENT_STORE_PROPERTY_NAME));
         if (dbFile.exists()) {
             dbFile.delete();
         }

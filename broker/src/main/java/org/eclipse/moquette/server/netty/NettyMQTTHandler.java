@@ -15,22 +15,18 @@
  */
 package org.eclipse.moquette.server.netty;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
+import java.util.HashMap;
+import java.util.Map;
+import org.eclipse.moquette.spi.IMessaging;
 import org.eclipse.moquette.proto.Utils;
 import org.eclipse.moquette.proto.messages.AbstractMessage;
+import static org.eclipse.moquette.proto.messages.AbstractMessage.*;
 import org.eclipse.moquette.proto.messages.PingRespMessage;
-import org.eclipse.moquette.server.Constants;
-import org.eclipse.moquette.server.cluster.Node;
-import org.eclipse.moquette.spi.IMessaging;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static org.eclipse.moquette.proto.messages.AbstractMessage.*;
 
 /**
  *
@@ -40,13 +36,11 @@ import static org.eclipse.moquette.proto.messages.AbstractMessage.*;
 public class NettyMQTTHandler extends ChannelInboundHandlerAdapter {
     
     private static final Logger LOG = LoggerFactory.getLogger(NettyMQTTHandler.class);
+    private IMessaging m_messaging;
     private final Map<ChannelHandlerContext, NettyChannel> m_channelMapper = new HashMap<ChannelHandlerContext, NettyChannel>();
-	private IMessaging m_messaging;
-	// node info of cluster
-	private Node current;
-
-	@Override
-	public void channelRead(ChannelHandlerContext ctx, Object message) {
+    
+    @Override
+    public void channelRead(ChannelHandlerContext ctx, Object message) {
         AbstractMessage msg = (AbstractMessage) message;
         LOG.info("Received a message of type {}", Utils.msgType2String(msg.getMessageType()));
         try {
@@ -63,7 +57,7 @@ public class NettyMQTTHandler extends ChannelInboundHandlerAdapter {
                     NettyChannel channel;
                     synchronized(m_channelMapper) {
                         if (!m_channelMapper.containsKey(ctx)) {
-	                        m_channelMapper.put(ctx, new NettyChannel(ctx, current));
+                            m_channelMapper.put(ctx, new NettyChannel(ctx));
                         }
                         channel = m_channelMapper.get(ctx);
                     }
@@ -83,7 +77,7 @@ public class NettyMQTTHandler extends ChannelInboundHandlerAdapter {
     @Override
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
         NettyChannel channel = m_channelMapper.get(ctx);
-        String clientID = (String) channel.getAttribute(Constants.ATTR_CLIENTID);
+        String clientID = (String) channel.getAttribute(NettyChannel.ATTR_KEY_CLIENTID);
         m_messaging.lostConnection(channel, clientID);
         ctx.close(/*false*/);
         synchronized(m_channelMapper) {
@@ -94,8 +88,4 @@ public class NettyMQTTHandler extends ChannelInboundHandlerAdapter {
     public void setMessaging(IMessaging messaging) {
         m_messaging = messaging;
     }
-
-	public void setNode(Node node) {
-		current = node;
-	}
 }

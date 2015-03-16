@@ -2,6 +2,8 @@
 
 ## What is Moquette?
 
+[![Build Status](https://api.travis-ci.org/andsel/moquette.svg?branch=master)](https://travis-ci.org/andsel/moquette)
+
 Moquette aims to be a MQTT compliant broker. The broker supports QoS 0, QoS 1 and QoS 2.
 
 Its designed to be evented, uses Netty for the protocol encoding and decoding part, the protocol logic 
@@ -27,7 +29,7 @@ cd bin
 Starting from version 0.6 Moquette is OSGi compliant, to see it in action: 
 ```
 mvn clean install;
-cd budle;
+cd bundle;
 mvn install pax:provision
 ``` 
 

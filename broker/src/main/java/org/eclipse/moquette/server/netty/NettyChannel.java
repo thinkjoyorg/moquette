@@ -15,16 +15,12 @@
  */
 package org.eclipse.moquette.server.netty;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.util.Attribute;
 import io.netty.util.AttributeKey;
 import org.eclipse.moquette.server.Constants;
 import org.eclipse.moquette.server.ServerChannel;
-import org.eclipse.moquette.server.cluster.Node;
 
 /**
  *
@@ -32,38 +28,27 @@ import org.eclipse.moquette.server.cluster.Node;
  */
 public class NettyChannel implements ServerChannel {
     
-    private static final AttributeKey<Object> ATTR_KEY_KEEPALIVE = new AttributeKey<Object>(Constants.KEEP_ALIVE);
-    private static final AttributeKey<Object> ATTR_KEY_CLEANSESSION = new AttributeKey<Object>(Constants.CLEAN_SESSION);
-    private static final AttributeKey<Object> ATTR_KEY_CLIENTID = new AttributeKey<Object>(Constants.ATTR_CLIENTID);
-	private ChannelHandlerContext m_channel;
-	private Node currentNode;
-	private Map<Object, AttributeKey<Object>> m_attributesKeys = new HashMap<Object, AttributeKey<Object>>();
+    private ChannelHandlerContext m_channel;
+    
 
-	NettyChannel(ChannelHandlerContext ctx, Node node) {
-		m_channel = ctx;
-		currentNode = node;
-		m_attributesKeys.put(Constants.KEEP_ALIVE, ATTR_KEY_KEEPALIVE);
-		m_attributesKeys.put(Constants.CLEAN_SESSION, ATTR_KEY_CLEANSESSION);
-        m_attributesKeys.put(Constants.ATTR_CLIENTID, ATTR_KEY_CLIENTID);
+    public static final AttributeKey<Object> ATTR_KEY_KEEPALIVE = AttributeKey.valueOf(Constants.KEEP_ALIVE);
+    public static final AttributeKey<Object> ATTR_KEY_CLEANSESSION = AttributeKey.valueOf(Constants.CLEAN_SESSION);
+    public static final AttributeKey<Object> ATTR_KEY_CLIENTID = AttributeKey.valueOf(Constants.ATTR_CLIENTID);
+
+    NettyChannel(ChannelHandlerContext ctx) {
+        m_channel = ctx;
     }
 
-    public Object getAttribute(Object key) {
-        Attribute<Object> attr = m_channel.attr(mapKey(key));
+    public Object getAttribute(AttributeKey<Object> key) {
+        Attribute<Object> attr = m_channel.attr(key);
         return attr.get();
     }
 
-    public void setAttribute(Object key, Object value) {
-        Attribute<Object> attr = m_channel.attr(mapKey(key));
+    public void setAttribute(AttributeKey<Object> key, Object value) {
+        Attribute<Object> attr = m_channel.attr(key);
         attr.set(value);
     }
     
-    private synchronized AttributeKey<Object> mapKey(Object key) {
-        if (!m_attributesKeys.containsKey(key)) {
-            throw new IllegalArgumentException("mapKey can't find a matching AttributeKey for " + key);
-        }
-        return m_attributesKeys.get(key);
-    }
-
     public void setIdleTime(int idleTime) {
         if (m_channel.pipeline().names().contains("idleStateHandler")) {
             m_channel.pipeline().remove("idleStateHandler");
@@ -83,14 +68,9 @@ public class NettyChannel implements ServerChannel {
         m_channel.writeAndFlush(value);
     }
 
-	@Override
-	public Node getCurrentNode() {
-		return currentNode;
-	}
-
-	@Override
-	public String toString() {
-		String clientID = (String) getAttribute(Constants.ATTR_CLIENTID);
-        return "session [clientID "+ clientID +"]";
+    @Override
+    public String toString() {
+        String clientID = (String) getAttribute(ATTR_KEY_CLIENTID);
+        return "session [clientID: "+ clientID +"]" + super.toString();
     }
 }

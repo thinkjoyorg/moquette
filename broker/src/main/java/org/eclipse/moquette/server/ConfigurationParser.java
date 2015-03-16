@@ -22,7 +22,9 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
 import java.text.ParseException;
+import java.util.Map.Entry;
 import java.util.Properties;
+
 import org.eclipse.moquette.commons.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,10 +44,25 @@ class ConfigurationParser {
     private Properties m_properties = new Properties();
     
     ConfigurationParser() {
-        m_properties.put("port", Integer.toString(Constants.PORT));
-        m_properties.put("host", Constants.HOST);
-        m_properties.put("websocket_port", Integer.toString(Constants.WEBSOCKET_PORT));
-        m_properties.put("password_file", "");
+    	createDefaults();
+    }
+
+    /**
+     * Crate a ConfigurationParser merging the default properties with the provided ones.
+     * */
+    ConfigurationParser(Properties properties) {
+    	this();
+    	for (Entry<Object, Object> entrySet : properties.entrySet()) {
+                m_properties.put(entrySet.getKey(), entrySet.getValue());
+    	}
+    }
+        
+    private void createDefaults() {
+        m_properties.put(Constants.PORT_PROPERTY_NAME, Integer.toString(Constants.PORT));
+        m_properties.put(Constants.HOST_PROPERTY_NAME, Constants.HOST);
+        m_properties.put(Constants.WEB_SOCKET_PORT_PROPERTY_NAME, Integer.toString(Constants.WEBSOCKET_PORT));
+        m_properties.put(Constants.PASSWORD_FILE_PROPERTY_NAME, "");
+        m_properties.put(Constants.PERSISTENT_STORE_PROPERTY_NAME, Constants.DEFAULT_PERSISTENT_PATH);
     }
     
     /**

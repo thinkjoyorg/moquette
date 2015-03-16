@@ -66,6 +66,7 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
     
     private final ProtocolProcessor m_processor = new ProtocolProcessor();
     private final AnnotationSupport annotationSupport = new AnnotationSupport();
+    private boolean benchmarkEnabled = false;
     
     CountDownLatch m_stopLatch;
 
@@ -84,7 +85,7 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
     public void init(Properties configProps) {
         subscriptions = new SubscriptionsStore();
         m_executor = Executors.newFixedThreadPool(1);
-        m_disruptor = new Disruptor<ValueEvent>(ValueEvent.EVENT_FACTORY, 1024 * 32, m_executor);
+        m_disruptor = new Disruptor<>(ValueEvent.EVENT_FACTORY, 1024 * 32, m_executor);
         /*Disruptor<ValueEvent> m_disruptor = new Disruptor<ValueEvent>(ValueEvent.EVENT_FACTORY, 1024 * 32, m_executor,
                 ProducerType.MULTI, new BusySpinWaitStrategy());*/
         m_disruptor.handleEventsWith(this);
@@ -158,8 +159,10 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
             try {
                 long startTime = System.nanoTime();
                 annotationSupport.dispatch(session, message);
-                long delay = System.nanoTime() - startTime;
-                histogram.recordValue(delay);
+                if (benchmarkEnabled) {
+                    long delay = System.nanoTime() - startTime;
+                    histogram.recordValue(delay);
+                }
             } catch (Throwable th) {
                 LOG.error("Grave error processing the message {} for {}", message, session, th);
             }
@@ -167,8 +170,10 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
     }
 
     private void processInit(Properties props) {
+        benchmarkEnabled = Boolean.parseBoolean(System.getProperty("moquette.processor.benchmark", "false"));
+
         //TODO use a property to select the storage path
-        MapDBPersistentStore mapStorage = new MapDBPersistentStore();
+        MapDBPersistentStore mapStorage = new MapDBPersistentStore(props.getProperty(org.eclipse.moquette.commons.Constants.PERSISTENT_STORE_PROPERTY_NAME, ""));
         m_storageService = mapStorage;
         m_sessionsStore = mapStorage;
 
@@ -178,7 +183,7 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
         //subscriptions.init(storedSubscriptions);
         subscriptions.init(m_sessionsStore);
         
-        String passwdPath = props.getProperty("password_file", "");
+        String passwdPath = props.getProperty(org.eclipse.moquette.commons.Constants.PASSWORD_FILE_PROPERTY_NAME, "");
         String configPath = System.getProperty("moquette.path", null);
         IAuthenticator authenticator;
         if (passwdPath.isEmpty()) {
@@ -201,7 +206,9 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
         subscriptions = null;
         m_stopLatch.countDown();
 
-        //log metrics
-        histogram.outputPercentileDistribution(System.out, 1000.0);
+        if (benchmarkEnabled) {
+            //log metrics
+            histogram.outputPercentileDistribution(System.out, 1000.0);
+        }
     }
 }

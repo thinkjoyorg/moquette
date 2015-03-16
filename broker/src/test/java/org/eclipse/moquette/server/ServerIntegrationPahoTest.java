@@ -15,19 +15,15 @@
  */
 package org.eclipse.moquette.server;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.Set;
-
 import org.eclipse.paho.client.mqttv3.*;
 import org.eclipse.paho.client.mqttv3.persist.MqttDefaultFilePersistence;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import redis.clients.jedis.Jedis;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.Properties;
 
 import static org.junit.Assert.*;
 
@@ -38,11 +34,9 @@ public class ServerIntegrationPahoTest {
     static MqttClientPersistence s_dataStore;
     static MqttClientPersistence s_pubDataStore;
     
-
     Server m_server;
     IMqttClient m_client;
     TestCallback m_callback;
-	Jedis jedis;
 
     @BeforeClass
     public static void beforeTests() {
@@ -53,20 +47,19 @@ public class ServerIntegrationPahoTest {
 
     protected void startServer() throws IOException {
         m_server = new Server();
-        m_server.startServer();
+        m_server.startServer(new Properties());
     }
 
     @Before
     public void setUp() throws Exception {
-        File dbFile = new File(Server.STORAGE_FILE_PATH);
-        assertFalse(String.format("The DB storagefile %s already exists", Server.STORAGE_FILE_PATH), dbFile.exists());
-	    jedis = RedisPool.getPool().getResource();
-	    jedis.del(Constants.KEY_NODE_LIST);
-	    startServer();
+        File dbFile = new File(org.eclipse.moquette.commons.Constants.DEFAULT_MOQUETTE_STORE_MAP_DB_FILENAME);
+        assertFalse(String.format("The DB storagefile %s already exists",org.eclipse.moquette.commons.Constants.DEFAULT_MOQUETTE_STORE_MAP_DB_FILENAME), dbFile.exists());
+    	
+        startServer();
 
-	    m_client = new MqttClient("tcp://localhost:1883", "TestClient", s_dataStore);
-	    m_callback = new TestCallback();
-	    m_client.setCallback(m_callback);
+        m_client = new MqttClient("tcp://localhost:1883", "TestClient", s_dataStore);
+        m_callback = new TestCallback();
+        m_client.setCallback(m_callback);
     }
 
     @After
@@ -76,57 +69,12 @@ public class ServerIntegrationPahoTest {
         }
 
         m_server.stopServer();
-        File dbFile = new File(Server.STORAGE_FILE_PATH);
+        File dbFile = new File(m_server.getProperties().getProperty(org.eclipse.moquette.commons.Constants.PERSISTENT_STORE_PROPERTY_NAME));
         if (dbFile.exists()) {
             dbFile.delete();
         }
         assertFalse(dbFile.exists());
-	    RedisPool.getPool().returnResource(jedis);
-
     }
-
-	@Test
-	public void testGetNodeList() throws Exception {
-		LOG.info("test GetNodeList ...");
-		int size = jedis.smembers(Constants.KEY_NODE_LIST).size();
-		Set<String> set = jedis.smembers(Constants.KEY_NODE_LIST);
-		assertEquals(1, size);
-		assertEquals("tcp://localhost:1883", set.iterator().next());
-	}
-
-	@Test
-	public void testAddRouteAfterSubscribe() throws Exception {
-		LOG.info("*** testAddRouteAfterSubscribe ***");
-		m_client.connect();
-		m_client.subscribe("/topic", 0);
-		m_client.subscribe("/group", 0);
-		m_client.subscribe("/ids", 0);
-		assertEquals(1, jedis.keys("/topic").size());
-		assertEquals(1, jedis.keys("/group").size());
-		assertEquals(1, jedis.keys("/ids").size());
-		assertEquals("tcp://localhost:1883", jedis.smembers("/topic").iterator().next());
-
-	}
-
-	@Test
-	public void testCleanRouteAfterUnsubscribe() throws Exception {
-		LOG.info("*** testCleanRouteAfterUnsubscribe ***");
-		m_client.connect();
-		m_client.subscribe("/topic", 0);
-
-		m_client.unsubscribe("/topic");
-		assertEquals(0, jedis.smembers("/topic").size());
-	}
-
-	@Test
-	public void testCleanRouteAfterDisconnect() throws Exception {
-		LOG.info("*** testCleanRouteAfterDisconnect ***");
-		m_client.connect();
-		m_client.subscribe("/topic", 0);
-
-		m_client.disconnect();
-		assertEquals(0, jedis.smembers("/topic").size());
-	}
 
     @Test
     public void testSubscribe() throws Exception {
@@ -225,7 +173,6 @@ public class ServerIntegrationPahoTest {
         LOG.info("*** testRetain_maintainMessage_againstClientDestruction ***");
         m_client.connect();
         m_client.publish("/topic", "Test my payload".getBytes(), 1, true);
-
         m_client.disconnect();
 
         //reconnect and publish
@@ -279,16 +226,13 @@ public class ServerIntegrationPahoTest {
         LOG.info("*** testPublishWithQoS1 ***");
         m_client.connect();
         m_client.subscribe("/topic", 1);
-	    m_client.publish("/topic", "Hello MQTT 1".getBytes(), 1, false);
-	    m_client.publish("/topic", "Hello MQTT 2".getBytes(), 1, false);
-	    m_client.publish("/topic", "Hello MQTT 3".getBytes(), 1, false);
-	    m_client.disconnect();
+        m_client.publish("/topic", "Hello MQTT".getBytes(), 1, false);
+        m_client.disconnect();
 
         //reconnect and publish
         MqttMessage message = m_callback.getMessage(true);
-
-	    assertEquals("Hello MQTT", message.toString());
-	    assertEquals(1, message.getQos());
+        assertEquals("Hello MQTT", message.toString());
+        assertEquals(1, message.getQos());
     }
 
     @Test

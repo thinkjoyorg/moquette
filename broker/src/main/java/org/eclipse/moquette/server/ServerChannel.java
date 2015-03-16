@@ -15,7 +15,7 @@
  */
 package org.eclipse.moquette.server;
 
-import org.eclipse.moquette.server.cluster.Node;
+import io.netty.util.AttributeKey;
 
 /**
  *
@@ -23,15 +23,13 @@ import org.eclipse.moquette.server.cluster.Node;
  */
 public interface ServerChannel {
     
-    Object getAttribute(Object key);
+    Object getAttribute(AttributeKey<Object> key);
     
-    void setAttribute(Object key, Object value);
+    void setAttribute(AttributeKey<Object> key, Object value);
     
     void setIdleTime(int idleTime);
     
     void close(boolean immediately);
     
     void write(Object value);
-
-	Node getCurrentNode();
 }
