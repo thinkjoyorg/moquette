@@ -22,4 +22,10 @@ public class Constants {
     public static final String ATTR_CLIENTID = "ClientID";
     public static final String CLEAN_SESSION = "cleanSession";
     public static final String KEEP_ALIVE = "keepAlive";
+
+	///////////////////////// Redis ///////////////////
+
+	/*根据此Key,从redis中获取mqtt集群中可用的节点列表*/
+	public static final String KEY_NODE_LIST = "node.list";
+
 }

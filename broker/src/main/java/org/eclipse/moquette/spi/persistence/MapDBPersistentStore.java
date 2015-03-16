@@ -16,27 +16,27 @@
 
 package org.eclipse.moquette.spi.persistence;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.*;
+import java.util.concurrent.ConcurrentMap;
+
 import org.eclipse.moquette.proto.MQTTException;
+import org.eclipse.moquette.proto.messages.AbstractMessage;
 import org.eclipse.moquette.spi.IMatchingCondition;
 import org.eclipse.moquette.spi.IMessagesStore;
 import org.eclipse.moquette.spi.ISessionsStore;
 import org.eclipse.moquette.spi.impl.events.PublishEvent;
 import org.eclipse.moquette.spi.impl.storage.StoredPublishEvent;
 import org.eclipse.moquette.spi.impl.subscriptions.Subscription;
-import org.eclipse.moquette.proto.messages.AbstractMessage;
-import static org.eclipse.moquette.server.Server.STORAGE_FILE_PATH;
-import static org.eclipse.moquette.spi.impl.Utils.defaultGet;
-
 import org.mapdb.DB;
 import org.mapdb.DBMaker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.*;
-import java.util.concurrent.ConcurrentMap;
+import static org.eclipse.moquette.server.Server.STORAGE_FILE_PATH;
+import static org.eclipse.moquette.spi.impl.Utils.defaultGet;
 
 /**
  * MapDB main persistence implementation
@@ -218,8 +218,13 @@ public class MapDBPersistentStore implements IMessagesStore, ISessionsStore {
         return allSubscriptions;
     }
 
-    @Override
-    public boolean contains(String clientID) {
+	public Set<Subscription> getSubscriptionById(String clientID) {
+		Set<Subscription> subs = m_persistentSubscriptions.get(clientID);
+		return subs;
+	}
+
+	@Override
+	public boolean contains(String clientID) {
         return m_persistentSubscriptions.containsKey(clientID);
     }
 

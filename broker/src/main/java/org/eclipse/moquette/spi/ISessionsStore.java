@@ -44,6 +44,8 @@ public interface ISessionsStore {
 
     List<Subscription> listAllSubscriptions();
 
+	Set<Subscription> getSubscriptionById(String clientID);
+
     /**
      * @return true iff there are subscriptions persisted with clientID
      */

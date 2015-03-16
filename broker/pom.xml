@@ -1,5 +1,4 @@
-
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
@@ -120,6 +119,24 @@
             <version>2.1.4</version>
         </dependency>
 
+        <dependency>
+            <groupId>com.linkedin</groupId>
+            <artifactId>norbert_2.8.1</artifactId>
+            <version>0.6.33</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>redis.clients</groupId>
+            <artifactId>jedis</artifactId>
+            <version>2.6.2</version>
+        </dependency>
+        <dependency>
+            <groupId>commons-pool</groupId>
+            <artifactId>commons-pool</artifactId>
+            <version>20030825.183949</version>
+        </dependency>
+
         <!-- Test dependencies -->
         <dependency>
             <groupId>junit</groupId>
@@ -138,8 +155,8 @@
         <!-- needs extra dependencies: objenesis & hamcrest -->
         <dependency>
             <groupId>org.mockito</groupId>
-            <artifactId>mockito-core</artifactId>  
-            <version>1.10.19</version>
+            <artifactId>mockito-core</artifactId>
+            <version>1.9.0</version>
             <scope>test</scope>
         </dependency>
         

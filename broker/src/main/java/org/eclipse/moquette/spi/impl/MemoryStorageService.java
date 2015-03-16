@@ -18,13 +18,12 @@ package org.eclipse.moquette.spi.impl;
 import java.nio.ByteBuffer;
 import java.util.*;
 
+import org.eclipse.moquette.proto.messages.AbstractMessage;
 import org.eclipse.moquette.spi.IMatchingCondition;
 import org.eclipse.moquette.spi.IMessagesStore;
+import org.eclipse.moquette.spi.ISessionsStore;
 import org.eclipse.moquette.spi.impl.events.PublishEvent;
 import org.eclipse.moquette.spi.impl.subscriptions.Subscription;
-import org.eclipse.moquette.proto.messages.AbstractMessage;
-
-import org.eclipse.moquette.spi.ISessionsStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,15 +32,14 @@ import static org.eclipse.moquette.spi.impl.Utils.defaultGet;
 /**
  */
 public class MemoryStorageService implements IMessagesStore, ISessionsStore {
-    
-    private Map<String, Set<Subscription>> m_persistentSubscriptions = new HashMap<String, Set<Subscription>>();
-    private Map<String, StoredMessage> m_retainedStore = new HashMap<String, StoredMessage>();
+
+	private static final Logger LOG = LoggerFactory.getLogger(MemoryStorageService.class);
+	private Map<String, Set<Subscription>> m_persistentSubscriptions = new HashMap<String, Set<Subscription>>();
+	private Map<String, StoredMessage> m_retainedStore = new HashMap<String, StoredMessage>();
     //TODO move in a multimap because only Qos1 and QoS2 are stored here and they have messageID(key of secondary map)
     private Map<String, List<PublishEvent>> m_persistentMessageStore = new HashMap<String, List<PublishEvent>>();
     private Map<String, PublishEvent> m_inflightStore = new HashMap<String, PublishEvent>();
     private Map<String, PublishEvent> m_qos2Store = new HashMap<String, PublishEvent>();
-    
-    private static final Logger LOG = LoggerFactory.getLogger(MemoryStorageService.class);
     
     public void initStore() {
     }
@@ -165,9 +163,15 @@ public class MemoryStorageService implements IMessagesStore, ISessionsStore {
         return allSubscriptions;
     }
 
-    @Override
-    public void close() {
-        //To change body of implemented methods use File | Settings | File Templates.
+	@Override
+	public Set<Subscription> getSubscriptionById(String clientID) {
+		Set<Subscription> subs = m_persistentSubscriptions.get(clientID);
+		return subs;
+	}
+
+	@Override
+	public void close() {
+		//To change body of implemented methods use File | Settings | File Templates.
     }
 
     @Override

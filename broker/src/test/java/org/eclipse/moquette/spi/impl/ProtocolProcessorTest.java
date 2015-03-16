@@ -19,6 +19,12 @@ import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+
+import org.eclipse.moquette.proto.messages.*;
+import org.eclipse.moquette.proto.messages.AbstractMessage.QOSType;
+import org.eclipse.moquette.server.Constants;
+import org.eclipse.moquette.server.ServerChannel;
+import org.eclipse.moquette.server.cluster.Node;
 import org.eclipse.moquette.spi.IMatchingCondition;
 import org.eclipse.moquette.spi.IMessagesStore;
 import org.eclipse.moquette.spi.ISessionsStore;
@@ -26,20 +32,11 @@ import org.eclipse.moquette.spi.impl.events.LostConnectionEvent;
 import org.eclipse.moquette.spi.impl.events.PublishEvent;
 import org.eclipse.moquette.spi.impl.subscriptions.Subscription;
 import org.eclipse.moquette.spi.impl.subscriptions.SubscriptionsStore;
-import static org.eclipse.moquette.parser.netty.Utils.VERSION_3_1_1;
-import org.eclipse.moquette.proto.messages.AbstractMessage;
-import org.eclipse.moquette.proto.messages.AbstractMessage.QOSType;
-import org.eclipse.moquette.proto.messages.ConnAckMessage;
-import org.eclipse.moquette.proto.messages.ConnectMessage;
-import org.eclipse.moquette.proto.messages.DisconnectMessage;
-import org.eclipse.moquette.proto.messages.PublishMessage;
-import org.eclipse.moquette.proto.messages.SubAckMessage;
-import org.eclipse.moquette.proto.messages.SubscribeMessage;
-import org.eclipse.moquette.server.Constants;
-import org.eclipse.moquette.server.ServerChannel;
-import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
+
+import static org.eclipse.moquette.parser.netty.Utils.VERSION_3_1_1;
+import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
 /**
@@ -66,80 +63,6 @@ public class ProtocolProcessorTest {
     AbstractMessage m_receivedMessage;
     MockAuthenticator m_mockAuthenticator;
     
-    class DummyChannel implements ServerChannel {
-        
-        private Map<Object, Object> m_attributes = new HashMap<Object, Object>();
-
-        public Object getAttribute(Object key) {
-            return m_attributes.get(key);
-        }
-
-        public void setAttribute(Object key, Object value) {
-            m_attributes.put(key, value);
-        }
-
-        public void setIdleTime(int idleTime) {
-        }
-
-        public void close(boolean immediately) {
-            
-        }
-
-        public void write(Object value) {
-            try {
-                m_receivedMessage = (AbstractMessage) value;
-                if (m_receivedMessage instanceof ConnAckMessage) {
-                    ConnAckMessage buf = (ConnAckMessage) m_receivedMessage;
-                    m_returnCode = buf.getReturnCode();
-                }
-            } catch (Exception ex) {
-                throw new AssertionError("Wrong return code");
-            }
-        }
-    } 
-    
-    /**
-     * This a synchronous channel that avoid output ring buffer from Processor
-     */
-    class MockReceiverChannel implements ServerChannel {
-//        byte m_returnCode;
-        AbstractMessage m_receivedMessage;
-        private Map<Object, Object> m_attributes = new HashMap<Object, Object>();
-
-        public Object getAttribute(Object key) {
-            return m_attributes.get(key);
-        }
-
-        public void setAttribute(Object key, Object value) {
-            m_attributes.put(key, value);
-        }
-
-        public void setIdleTime(int idleTime) {
-        }
-
-        public void close(boolean immediately) {
-        }
-        
-        public AbstractMessage getMessage() {
-            return this.m_receivedMessage;
-        }
-        
-//        public byte getReturnCode() {
-//            return this.m_returnCode;
-//        }
-
-        public void write(Object value) {
-            try {
-                this.m_receivedMessage = (AbstractMessage) value;
-//                if (this.m_receivedMessage instanceof PublishMessage) {
-//                    T buf = (T) this.m_receivedMessage;
-//                }
-            } catch (Exception ex) {
-                throw new AssertionError("Wrong return code");
-            }
-        }
-    } 
-    
     @Before
     public void setUp() throws InterruptedException {
         connMsg = new ConnectMessage();
@@ -153,7 +76,7 @@ public class ProtocolProcessorTest {
         m_storageService = memStorage;
         m_sessionStore = memStorage;
         //m_storageService.initStore();
-        
+
         Map<String, String> users = new HashMap<String, String>();
         users.put(TEST_USER, TEST_PWD);
         m_mockAuthenticator = new MockAuthenticator(users);
@@ -186,13 +109,13 @@ public class ProtocolProcessorTest {
         assertEquals(ConnAckMessage.CONNECTION_ACCEPTED, m_returnCode);
     }
 
-    @Test
-    public void testWill() {
+	@Test
+	public void testWill() {
         connMsg.setClientID("123");
         connMsg.setWillFlag(true);
         connMsg.setWillTopic("topic");
         connMsg.setWillMessage("Topic message");
-        
+
 
         //Exercise
         //m_handler.setMessaging(mockedMessaging);
@@ -212,21 +135,21 @@ public class ProtocolProcessorTest {
         connMsg.setPasswordFlag(true);
         connMsg.setUsername(TEST_USER);
         connMsg.setPassword(TEST_PWD);
-        
+
         //Exercise
         m_processor.processConnect(m_session, connMsg);
 
         //Verify
         assertEquals(ConnAckMessage.CONNECTION_ACCEPTED, m_returnCode);
     }
-    
+
     @Test
     public void noPasswdAuthentication() {
         connMsg.setClientID("123");
         connMsg.setUserFlag(true);
         connMsg.setPasswordFlag(false);
         connMsg.setUsername(TEST_USER);
-        
+
         //Exercise
         m_processor.processConnect(m_session, connMsg);
 
@@ -241,14 +164,13 @@ public class ProtocolProcessorTest {
         connMsg.setPasswordFlag(true);
         connMsg.setUsername(TEST_USER + "_fake");
         connMsg.setPassword(TEST_PWD);
-        
+
         //Exercise
         m_processor.processConnect(m_session, connMsg);
 
         //Verify
         assertEquals(ConnAckMessage.BAD_USERNAME_OR_PASSWORD, m_returnCode);
     }
-    
     
     @Test
     public void testConnAckContainsSessionPresentFlag() throws InterruptedException {
@@ -263,7 +185,7 @@ public class ProtocolProcessorTest {
         m_processor.processConnect(m_session, connMsg);
         //disconnect
         m_processor.processDisconnect(m_session, new DisconnectMessage());
-              
+
         //Exercise, reconnect
         MockReceiverChannel firstReceiverSession = new MockReceiverChannel();
         m_processor.processConnect(firstReceiverSession, connMsg);
@@ -276,10 +198,10 @@ public class ProtocolProcessorTest {
         assertEquals(ConnAckMessage.CONNECTION_ACCEPTED, connAckMsg.getReturnCode());
     }
 
-    @Test
-    public void testPublish() throws InterruptedException {
-        final Subscription subscription = new Subscription(FAKE_CLIENT_ID, 
-                FAKE_TOPIC, AbstractMessage.QOSType.MOST_ONE, true);
+	@Test
+	public void testPublish() throws InterruptedException {
+		final Subscription subscription = new Subscription(FAKE_CLIENT_ID,
+				FAKE_TOPIC, AbstractMessage.QOSType.MOST_ONE, true);
 
         //subscriptions.matches(topic) redefine the method to return true
         SubscriptionsStore subs = new SubscriptionsStore() {
@@ -292,7 +214,7 @@ public class ProtocolProcessorTest {
                 }
             }
         };
-        
+
         //simulate a connect that register a clientID to an IoSession
         subs.init(new MemoryStorageService());
         m_processor.init(subs, m_storageService, m_sessionStore, null);
@@ -301,10 +223,10 @@ public class ProtocolProcessorTest {
         connectMessage.setClientID(FAKE_CLIENT_ID);
         connectMessage.setCleanSession(subscription.isCleanSession());
         m_processor.processConnect(m_session, connectMessage);
-        
-        
-        //Exercise
-        ByteBuffer buffer = ByteBuffer.allocate(5).put("Hello".getBytes());
+
+
+		//Exercise
+		ByteBuffer buffer = ByteBuffer.allocate(5).put("Hello".getBytes());
         PublishMessage msg = new PublishMessage();
         msg.setTopicName(FAKE_TOPIC);
         msg.setQos(QOSType.MOST_ONE);
@@ -320,10 +242,10 @@ public class ProtocolProcessorTest {
     
     @Test
     public void testPublishToMultipleSubscribers() throws InterruptedException {
-        final Subscription subscription = new Subscription(FAKE_CLIENT_ID, 
-                FAKE_TOPIC, AbstractMessage.QOSType.MOST_ONE, true);
-        final Subscription subscriptionClient2 = new Subscription(FAKE_CLIENT_ID2, 
-                FAKE_TOPIC, AbstractMessage.QOSType.MOST_ONE, true);
+	    final Subscription subscription = new Subscription(FAKE_CLIENT_ID,
+			    FAKE_TOPIC, AbstractMessage.QOSType.MOST_ONE, true);
+	    final Subscription subscriptionClient2 = new Subscription(FAKE_CLIENT_ID2,
+			    FAKE_TOPIC, AbstractMessage.QOSType.MOST_ONE, true);
 
         //subscriptions.matches(topic) redefine the method to return true
         SubscriptionsStore subs = new SubscriptionsStore() {
@@ -336,18 +258,18 @@ public class ProtocolProcessorTest {
                 }
             }
         };
-        
+
         //simulate a connect that register a clientID to an IoSession
         subs.init(new MemoryStorageService());
         m_processor.init(subs, m_storageService, m_sessionStore, null);
-        
+
         MockReceiverChannel firstReceiverSession = new MockReceiverChannel();
         ConnectMessage connectMessage = new ConnectMessage();
         connectMessage.setProcotolVersion((byte)3);
         connectMessage.setClientID(FAKE_CLIENT_ID);
         connectMessage.setCleanSession(subscription.isCleanSession());
         m_processor.processConnect(firstReceiverSession, connectMessage);
-        
+
         //connect the second fake subscriber
         MockReceiverChannel secondReceiverSession = new MockReceiverChannel();
         ConnectMessage connectMessage2 = new ConnectMessage();
@@ -355,7 +277,7 @@ public class ProtocolProcessorTest {
         connectMessage2.setClientID(FAKE_CLIENT_ID2);
         connectMessage2.setCleanSession(subscription.isCleanSession());
         m_processor.processConnect(secondReceiverSession, connectMessage2);
-        
+
         //Exercise
         ByteBuffer buffer = ByteBuffer.allocate(5).put("Hello".getBytes());
         buffer.rewind();
@@ -373,15 +295,15 @@ public class ProtocolProcessorTest {
         assertNotNull(pub2FirstSubscriber);
         String firstMessageContent = DebugUtils.payload2Str(pub2FirstSubscriber.getPayload());
         assertEquals("Hello", firstMessageContent);
-        
-        PublishMessage pub2SecondSubscriber = (PublishMessage) secondReceiverSession.getMessage();
-        assertNotNull(pub2SecondSubscriber);
+
+	    PublishMessage pub2SecondSubscriber = (PublishMessage) secondReceiverSession.getMessage();
+	    assertNotNull(pub2SecondSubscriber);
         String secondMessageContent = DebugUtils.payload2Str(pub2SecondSubscriber.getPayload());
         assertEquals("Hello", secondMessageContent);
     }
-    
-    @Test
-    public void testSubscribe() {
+
+	@Test
+	public void testSubscribe() {
         //Exercise
         SubscribeMessage msg = new SubscribeMessage();
         msg.addSubscription(new SubscribeMessage.Couple((byte)AbstractMessage.QOSType.MOST_ONE.ordinal(), FAKE_TOPIC));
@@ -403,18 +325,17 @@ public class ProtocolProcessorTest {
         m_session.setAttribute(Constants.CLEAN_SESSION, false);
         subscriptions.clearAllSubscriptions();
         assertEquals(0, subscriptions.size());
-        
-        m_processor.processSubscribe(m_session, msg/*, FAKE_CLIENT_ID, false*/);
-                
-        //Exercise
-        m_processor.processSubscribe(m_session, msg/*, FAKE_CLIENT_ID, false*/);
+
+	    m_processor.processSubscribe(m_session, msg/*, FAKE_CLIENT_ID, false*/);
+
+	    //Exercise
+	    m_processor.processSubscribe(m_session, msg/*, FAKE_CLIENT_ID, false*/);
 
         //Verify
         assertEquals(1, subscriptions.size());
         Subscription expectedSubscription = new Subscription(FAKE_CLIENT_ID, FAKE_TOPIC, AbstractMessage.QOSType.MOST_ONE, false);
         assertTrue(subscriptions.contains(expectedSubscription));
     }
-
     
     @Test
     public void testPublishOfRetainedMessage_afterNewSubscription() throws Exception {
@@ -428,20 +349,20 @@ public class ProtocolProcessorTest {
                         m_receivedMessage = (AbstractMessage) value;
                         publishRecvSignal.countDown();
                     }
-                    
-                    if (m_receivedMessage instanceof ConnAckMessage) {
-                        ConnAckMessage buf = (ConnAckMessage) m_receivedMessage;
+
+	                if (m_receivedMessage instanceof ConnAckMessage) {
+		                ConnAckMessage buf = (ConnAckMessage) m_receivedMessage;
                         m_returnCode = buf.getReturnCode();
                     }
                 } catch (Exception ex) {
                     throw new AssertionError("Wrong return code");
                 }
-            }   
+            }
         };
-        
-        //simulate a connect that register a clientID to an IoSession
-        final Subscription subscription = new Subscription(FAKE_PUBLISHER_ID, 
-                FAKE_TOPIC, AbstractMessage.QOSType.MOST_ONE, true);
+
+	    //simulate a connect that register a clientID to an IoSession
+	    final Subscription subscription = new Subscription(FAKE_PUBLISHER_ID,
+			    FAKE_TOPIC, AbstractMessage.QOSType.MOST_ONE, true);
 
         //subscriptions.matches(topic) redefine the method to return true
         SubscriptionsStore subs = new SubscriptionsStore() {
@@ -455,9 +376,9 @@ public class ProtocolProcessorTest {
             }
         };
         subs.init(new MemoryStorageService());
-        
-        //simulate a connect that register a clientID to an IoSession
-        m_processor.init(subs, m_storageService, m_sessionStore, null);
+
+	    //simulate a connect that register a clientID to an IoSession
+	    m_processor.init(subs, m_storageService, m_sessionStore, null);
         ConnectMessage connectMessage = new ConnectMessage();
         connectMessage.setClientID(FAKE_PUBLISHER_ID);
         connectMessage.setProcotolVersion((byte)3);
@@ -472,23 +393,23 @@ public class ProtocolProcessorTest {
         m_session.setAttribute(Constants.ATTR_CLIENTID, FAKE_PUBLISHER_ID);
         m_processor.processPublish(m_session, pubmsg);
         m_session.setAttribute(Constants.CLEAN_SESSION, false);
-        
-        //Exercise
-        SubscribeMessage msg = new SubscribeMessage();
+
+	    //Exercise
+	    SubscribeMessage msg = new SubscribeMessage();
         msg.addSubscription(new SubscribeMessage.Couple((byte)QOSType.MOST_ONE.ordinal(), "#"));
         m_processor.processSubscribe(m_session, msg/*, FAKE_PUBLISHER_ID, false*/);
-        
-        //Verify
-        //wait the latch
+
+	    //Verify
+	    //wait the latch
         assertTrue(publishRecvSignal.await(1, TimeUnit.SECONDS)); //no timeout
-        assertNotNull(m_receivedMessage); 
-        assertTrue(m_receivedMessage instanceof PublishMessage);
-        PublishMessage pubMessage = (PublishMessage) m_receivedMessage;
+	    assertNotNull(m_receivedMessage);
+	    assertTrue(m_receivedMessage instanceof PublishMessage);
+	    PublishMessage pubMessage = (PublishMessage) m_receivedMessage;
         assertEquals(FAKE_TOPIC, pubMessage.getTopicName());
     }
 
-    @Test
-    public void testRepublishAndConsumePersistedMessages_onReconnect() {
+	@Test
+	public void testRepublishAndConsumePersistedMessages_onReconnect() {
         SubscriptionsStore subs = mock(SubscriptionsStore.class);
         List<Subscription> emptySubs = Collections.emptyList();
         when(subs.matches(anyString())).thenReturn(emptySubs);
@@ -499,25 +420,25 @@ public class ProtocolProcessorTest {
         m_processor.init(subs, m_storageService, m_sessionStore, null);
         ConnectMessage connectMessage = new ConnectMessage();
         connectMessage.setClientID(FAKE_PUBLISHER_ID);
-        connectMessage.setProcotolVersion((byte)3);
-        connectMessage.setCleanSession(false);
+		connectMessage.setProcotolVersion((byte) 3);
+		connectMessage.setCleanSession(false);
         m_processor.processConnect(m_session, connectMessage);
 
         //Verify no messages are still stored
         assertTrue(m_storageService.listMessagesInSession(FAKE_PUBLISHER_ID).isEmpty());
     }
-    
-    @Test
+
+	@Test
     public void publishNoPublishToInactiveSubscriptions() {
         SubscriptionsStore mockedSubscriptions = mock(SubscriptionsStore.class);
-        Subscription inactiveSub = new Subscription("Subscriber", "/topic", QOSType.LEAST_ONE, false); 
-        inactiveSub.setActive(false);
-        List<Subscription> inactiveSubscriptions = Arrays.asList(inactiveSub);
+		Subscription inactiveSub = new Subscription("Subscriber", "/topic", QOSType.LEAST_ONE, false);
+		inactiveSub.setActive(false);
+		List<Subscription> inactiveSubscriptions = Arrays.asList(inactiveSub);
         when(mockedSubscriptions.matches(eq("/topic"))).thenReturn(inactiveSubscriptions);
         m_processor = new ProtocolProcessor();
         m_processor.init(mockedSubscriptions, m_storageService, m_sessionStore, null);
-        
-        //Exercise
+
+		//Exercise
         ByteBuffer buffer = ByteBuffer.allocate(5).put("Hello".getBytes());
         PublishMessage msg = new PublishMessage();
         msg.setTopicName("/topic");
@@ -528,21 +449,20 @@ public class ProtocolProcessorTest {
         m_processor.processPublish(m_session, msg);
 
         //Verify no message is received
-        assertNull(m_receivedMessage); 
-    }
-    
-    
-    @Test
+		assertNull(m_receivedMessage);
+	}
+
+	@Test
     public void publishToAnInactiveSubscriptionsCleanSession() {
         SubscriptionsStore mockedSubscriptions = mock(SubscriptionsStore.class);
-        Subscription inactiveSub = new Subscription("Subscriber", "/topic", QOSType.LEAST_ONE, true); 
-        inactiveSub.setActive(false);
-        List<Subscription> inactiveSubscriptions = Arrays.asList(inactiveSub);
+		Subscription inactiveSub = new Subscription("Subscriber", "/topic", QOSType.LEAST_ONE, true);
+		inactiveSub.setActive(false);
+		List<Subscription> inactiveSubscriptions = Arrays.asList(inactiveSub);
         when(mockedSubscriptions.matches(eq("/topic"))).thenReturn(inactiveSubscriptions);
         m_processor = new ProtocolProcessor();
         m_processor.init(mockedSubscriptions, m_storageService, m_sessionStore, null);
-        
-        //Exercise
+
+		//Exercise
         ByteBuffer buffer = ByteBuffer.allocate(5).put("Hello".getBytes());
         PublishMessage msg = new PublishMessage();
         msg.setTopicName("/topic");
@@ -553,12 +473,11 @@ public class ProtocolProcessorTest {
         m_processor.processPublish(m_session, msg);
 
         //Verify no message is received
-        assertNull(m_receivedMessage); 
-    }
-    
+		assertNull(m_receivedMessage);
+	}
     
     /**
-     * Verify that receiving a publish with retained message and with Q0S = 0 
+     * Verify that receiving a publish with retained message and with Q0S = 0
      * clean the existing retained messages for that topic.
      */
     @Test
@@ -576,16 +495,16 @@ public class ProtocolProcessorTest {
         msg.setRetainFlag(true);
         msg.setMessageID(100);
         m_processor.processPublish(m_session, msg);
-        
-        //Exercise
+
+	    //Exercise
         PublishMessage cleanPubMsg = new PublishMessage();
         cleanPubMsg.setTopicName(FAKE_TOPIC);
         cleanPubMsg.setPayload(payload);
         cleanPubMsg.setQos(QOSType.MOST_ONE);
         cleanPubMsg.setRetainFlag(true);
         m_processor.processPublish(m_session, cleanPubMsg);
-        
-        //Verify
+
+	    //Verify
         Collection<IMessagesStore.StoredMessage> messages = m_storageService.searchMatching(new IMatchingCondition() {
             public boolean match(String key) {
                 return  SubscriptionsStore.matchTopics(key, FAKE_TOPIC);
@@ -594,14 +513,13 @@ public class ProtocolProcessorTest {
         assertTrue(messages.isEmpty());
     }
 
-
-    /**
-     * Simulate a client1 (FAKE_CLIENT_ID) bound with session1, an event of connection lost
-     * for client2 (FAKE_CLIENT_ID, same of the client1) but from another session, verify
-     * the session of client1 is not closed.
-     * */
-    @Test
-    public void testConnectionLostClosesTheCorrectSession() {
+	/**
+	 * Simulate a client1 (FAKE_CLIENT_ID) bound with session1, an event of connection lost
+	 * for client2 (FAKE_CLIENT_ID, same of the client1) but from another session, verify
+	 * the session of client1 is not closed.
+	 */
+	@Test
+	public void testConnectionLostClosesTheCorrectSession() {
         MockReceiverChannel channel1 = new MockReceiverChannel();
 
         //init the processor
@@ -626,12 +544,96 @@ public class ProtocolProcessorTest {
 
         //Verify no subscriptions were deactivated for the client on session1
         verify(subs, never()).deactivate(anyString());
-    }
+	}
 
-    private void assertConnectReturnCode(byte expectedReturnCode, MockReceiverChannel receiverSession) {
-        AbstractMessage recvMsg = receiverSession.getMessage();
+	private void assertConnectReturnCode(byte expectedReturnCode, MockReceiverChannel receiverSession) {
+		AbstractMessage recvMsg = receiverSession.getMessage();
         assertTrue(recvMsg instanceof ConnAckMessage);
         ConnAckMessage connAckMsg = (ConnAckMessage) recvMsg;
         assertEquals(expectedReturnCode, connAckMsg.getReturnCode());
-    }
+	}
+
+	class DummyChannel implements ServerChannel {
+
+		private Map<Object, Object> m_attributes = new HashMap<Object, Object>();
+
+		public Object getAttribute(Object key) {
+			return m_attributes.get(key);
+		}
+
+		public void setAttribute(Object key, Object value) {
+			m_attributes.put(key, value);
+		}
+
+		public void setIdleTime(int idleTime) {
+		}
+
+		public void close(boolean immediately) {
+
+		}
+
+		public void write(Object value) {
+			try {
+				m_receivedMessage = (AbstractMessage) value;
+				if (m_receivedMessage instanceof ConnAckMessage) {
+					ConnAckMessage buf = (ConnAckMessage) m_receivedMessage;
+					m_returnCode = buf.getReturnCode();
+				}
+			} catch (Exception ex) {
+				throw new AssertionError("Wrong return code");
+			}
+		}
+
+		@Override
+		public Node getCurrentNode() {
+			return null;
+		}
+	}
+
+	/**
+	 * This a synchronous channel that avoid output ring buffer from Processor
+	 */
+	class MockReceiverChannel implements ServerChannel {
+		//        byte m_returnCode;
+		AbstractMessage m_receivedMessage;
+		private Map<Object, Object> m_attributes = new HashMap<Object, Object>();
+
+		public Object getAttribute(Object key) {
+			return m_attributes.get(key);
+		}
+
+		public void setAttribute(Object key, Object value) {
+			m_attributes.put(key, value);
+		}
+
+		public void setIdleTime(int idleTime) {
+		}
+
+		public void close(boolean immediately) {
+		}
+
+		public AbstractMessage getMessage() {
+			return this.m_receivedMessage;
+		}
+
+//        public byte getReturnCode() {
+//            return this.m_returnCode;
+//        }
+
+		public void write(Object value) {
+			try {
+				this.m_receivedMessage = (AbstractMessage) value;
+//                if (this.m_receivedMessage instanceof PublishMessage) {
+//                    T buf = (T) this.m_receivedMessage;
+//                }
+			} catch (Exception ex) {
+				throw new AssertionError("Wrong return code");
+			}
+		}
+
+		@Override
+		public Node getCurrentNode() {
+			return null;
+		}
+	}
 }

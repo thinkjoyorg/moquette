@@ -15,6 +15,8 @@
  */
 package org.eclipse.moquette.server;
 
+import org.eclipse.moquette.server.cluster.Node;
+
 /**
  *
  * @author andrea
@@ -30,4 +32,6 @@ public interface ServerChannel {
     void close(boolean immediately);
     
     void write(Object value);
+
+	Node getCurrentNode();
 }

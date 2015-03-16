@@ -15,15 +15,18 @@
  */
 package org.eclipse.moquette.server.netty;
 
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLEngine;
+import java.io.IOException;
+import java.io.InputStream;
+import java.security.KeyStore;
+import java.util.List;
+import java.util.Properties;
+
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufUtil;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInitializer;
-import io.netty.channel.ChannelOption;
-import io.netty.channel.ChannelPipeline;
-import io.netty.channel.EventLoopGroup;
+import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
@@ -36,22 +39,15 @@ import io.netty.handler.codec.http.websocketx.BinaryWebSocketFrame;
 import io.netty.handler.codec.http.websocketx.WebSocketServerProtocolHandler;
 import io.netty.handler.ssl.SslHandler;
 import io.netty.handler.timeout.IdleStateHandler;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.security.KeyStore;
-
-import java.util.List;
-import java.util.Properties;
-import javax.net.ssl.KeyManagerFactory;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLEngine;
 import org.eclipse.moquette.commons.Constants;
-import org.eclipse.moquette.spi.IMessaging;
 import org.eclipse.moquette.parser.netty.MQTTDecoder;
 import org.eclipse.moquette.parser.netty.MQTTEncoder;
 import org.eclipse.moquette.server.ServerAcceptor;
-import org.eclipse.moquette.server.netty.metrics.*;
+import org.eclipse.moquette.server.cluster.Node;
+import org.eclipse.moquette.server.netty.metrics.MessageMetrics;
+import org.eclipse.moquette.server.netty.metrics.MessageMetricsCollector;
+import org.eclipse.moquette.server.netty.metrics.MessageMetricsHandler;
+import org.eclipse.moquette.spi.IMessaging;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,47 +57,17 @@ import org.slf4j.LoggerFactory;
  */
 public class NettyAcceptor implements ServerAcceptor {
     
-    static class WebSocketFrameToByteBufDecoder extends MessageToMessageDecoder<BinaryWebSocketFrame> {
-
-        @Override
-        protected void decode(ChannelHandlerContext chc, BinaryWebSocketFrame frame, List<Object> out) throws Exception {
-            //convert the frame to a ByteBuf
-            ByteBuf bb = frame.content();
-            //System.out.println("WebSocketFrameToByteBufDecoder decode - " + ByteBufUtil.hexDump(bb));
-            bb.retain();
-            out.add(bb);
-        }
-    }
-    
-    static class ByteBufToWebSocketFrameEncoder extends MessageToMessageEncoder<ByteBuf> {
-
-        @Override
-        protected void encode(ChannelHandlerContext chc, ByteBuf bb, List<Object> out) throws Exception {
-            //convert the ByteBuf to a WebSocketFrame
-            BinaryWebSocketFrame result = new BinaryWebSocketFrame();
-            //System.out.println("ByteBufToWebSocketFrameEncoder encode - " + ByteBufUtil.hexDump(bb));
-            result.content().writeBytes(bb);
-            out.add(result);
-        }
-    }
-
-    abstract class PipelineInitializer {
-
-        abstract void init(ChannelPipeline pipeline) throws Exception;
-    }
-
     private static final Logger LOG = LoggerFactory.getLogger(NettyAcceptor.class);
-    
     EventLoopGroup m_bossGroup;
     EventLoopGroup m_workerGroup;
     //BytesMetricsCollector m_metricsCollector = new BytesMetricsCollector();
     MessageMetricsCollector m_metricsCollector = new MessageMetricsCollector();
 
-    @Override
-    public void initialize(IMessaging messaging, Properties props) throws IOException {
+	@Override
+	public void initialize(IMessaging messaging, Properties props) throws IOException {
         m_bossGroup = new NioEventLoopGroup();
         m_workerGroup = new NioEventLoopGroup();
-        
+
         initializePlainTCPTransport(messaging, props);
         initializeWebSocketTransport(messaging, props);
         initializeSSLTCPTransport(messaging, props);
@@ -131,26 +97,32 @@ public class NettyAcceptor implements ServerAcceptor {
             LOG.error(null, ex);
         }
     }
-    
+
     private void initializePlainTCPTransport(IMessaging messaging, Properties props) throws IOException {
-        final NettyMQTTHandler handler = new NettyMQTTHandler();
-        handler.setMessaging(messaging);
-        String host = props.getProperty("host");
-        int port = Integer.parseInt(props.getProperty("port"));
-        initFactory(host, port, new PipelineInitializer() {
-            @Override
-            void init(ChannelPipeline pipeline) {
-                pipeline.addFirst("idleStateHandler", new IdleStateHandler(0, 0, Constants.DEFAULT_CONNECT_TIMEOUT));
-                pipeline.addAfter("idleStateHandler", "idleEventHandler", new MoquetteIdleTimoutHandler());
-                //pipeline.addLast("logger", new LoggingHandler("Netty", LogLevel.ERROR));
-                pipeline.addLast("decoder", new MQTTDecoder());
-                pipeline.addLast("encoder", new MQTTEncoder());
-                pipeline.addLast("metrics", new MessageMetricsHandler(m_metricsCollector));
-                pipeline.addLast("handler", handler);
-            }
+	    int nodeId = Integer.parseInt(props.getProperty("id"));
+	    String host = props.getProperty("host");
+	    int port = Integer.parseInt(props.getProperty("port"));
+
+	    final NettyMQTTHandler handler = new NettyMQTTHandler();
+	    handler.setMessaging(messaging);
+	    handler.setNode(new Node(nodeId, host, port));
+	    initFactory(host, port, new PipelineInitializer() {
+		    @Override
+		    void init(ChannelPipeline pipeline) {
+			    // 如果10秒钟之内，客户端和服务端没有任何数据交互（读或写）
+			    // 服务端将主动断开和客户端的链接。进而触发moquette的LostConnectionEvent，再进而
+			    // 目前moquette服务器不会对客户端进行保活处理。如有需要，可在MoquetteIdelTimeoutHandler发送心跳检测
+			    pipeline.addFirst("idleStateHandler", new IdleStateHandler(0, 0, Constants.DEFAULT_CONNECT_TIMEOUT));
+			    pipeline.addAfter("idleStateHandler", "idleEventHandler", new MoquetteIdleTimoutHandler());
+			    //pipeline.addLast("logger", new LoggingHandler("Netty", LogLevel.ERROR));
+			    pipeline.addLast("decoder", new MQTTDecoder());
+			    pipeline.addLast("encoder", new MQTTEncoder());
+			    pipeline.addLast("metrics", new MessageMetricsHandler(m_metricsCollector));
+			    pipeline.addLast("handler", handler);
+		    }
         });
     }
-    
+
     private void initializeWebSocketTransport(IMessaging messaging, Properties props) throws IOException {
         String webSocketPortProp = props.getProperty("websocket_port");
         if (webSocketPortProp == null) {
@@ -159,33 +131,32 @@ public class NettyAcceptor implements ServerAcceptor {
             return;
         }
         int port = Integer.parseInt(webSocketPortProp);
-        
-        final NettyMQTTHandler handler = new NettyMQTTHandler();
-        handler.setMessaging(messaging);
+
+	    final NettyMQTTHandler handler = new NettyMQTTHandler();
+	    handler.setMessaging(messaging);
 
         String host = props.getProperty("host");
         initFactory(host, port, new PipelineInitializer() {
-            @Override
-            void init(ChannelPipeline pipeline) {
-                pipeline.addLast("httpEncoder", new HttpResponseEncoder());
-                pipeline.addLast("httpDecoder", new HttpRequestDecoder());
-                pipeline.addLast("aggregator", new HttpObjectAggregator(65536));
-                pipeline.addLast("webSocketHandler", new WebSocketServerProtocolHandler("/mqtt"/*"/mqtt"*/, "mqttv3.1, mqttv3.1.1"));
-                //pipeline.addLast("webSocketHandler", new WebSocketServerProtocolHandler(null, "mqtt"));
-                pipeline.addLast("ws2bytebufDecoder", new WebSocketFrameToByteBufDecoder());
-                pipeline.addLast("bytebuf2wsEncoder", new ByteBufToWebSocketFrameEncoder());
-                pipeline.addFirst("idleStateHandler", new IdleStateHandler(0, 0, Constants.DEFAULT_CONNECT_TIMEOUT));
-                pipeline.addAfter("idleStateHandler", "idleEventHandler", new MoquetteIdleTimoutHandler());
-                pipeline.addLast("decoder", new MQTTDecoder());
-                pipeline.addLast("encoder", new MQTTEncoder());
-                pipeline.addLast("metrics", new MessageMetricsHandler(m_metricsCollector));
-                pipeline.addLast("handler", handler);
-            }
+	        @Override
+	        void init(ChannelPipeline pipeline) {
+		        pipeline.addLast("httpEncoder", new HttpResponseEncoder());
+		        pipeline.addLast("httpDecoder", new HttpRequestDecoder());
+		        pipeline.addLast("aggregator", new HttpObjectAggregator(65536));
+		        pipeline.addLast("webSocketHandler", new WebSocketServerProtocolHandler("/mqtt"/*"/mqtt"*/, "mqttv3.1, mqttv3.1.1"));
+		        //pipeline.addLast("webSocketHandler", new WebSocketServerProtocolHandler(null, "mqtt"));
+		        pipeline.addLast("ws2bytebufDecoder", new WebSocketFrameToByteBufDecoder());
+		        pipeline.addLast("bytebuf2wsEncoder", new ByteBufToWebSocketFrameEncoder());
+		        pipeline.addFirst("idleStateHandler", new IdleStateHandler(0, 0, Constants.DEFAULT_CONNECT_TIMEOUT));
+		        pipeline.addAfter("idleStateHandler", "idleEventHandler", new MoquetteIdleTimoutHandler());
+		        pipeline.addLast("decoder", new MQTTDecoder());
+		        pipeline.addLast("encoder", new MQTTEncoder());
+		        pipeline.addLast("metrics", new MessageMetricsHandler(m_metricsCollector));
+		        pipeline.addLast("handler", handler);
+	        }
         });
     }
-    
-    
-    private void initializeSSLTCPTransport(IMessaging messaging, Properties props) throws IOException {
+
+	private void initializeSSLTCPTransport(IMessaging messaging, Properties props) throws IOException {
         String sslPortProp = props.getProperty("ssl_port");
         if (sslPortProp == null) {
             //Do nothing no SSL configured
@@ -198,11 +169,11 @@ public class NettyAcceptor implements ServerAcceptor {
             LOG.warn("You have configured the SSL port but not the jks_path, SSL not started");
             return;
         }
-        
-        //if we have the port also the jks then keyStorePassword and keyManagerPassword 
-        //has to be defined
-        final String keyStorePassword = props.getProperty("key_store_password");
-        final String keyManagerPassword = props.getProperty("key_manager_password");
+
+		//if we have the port also the jks then keyStorePassword and keyManagerPassword
+		//has to be defined
+		final String keyStorePassword = props.getProperty("key_store_password");
+		final String keyManagerPassword = props.getProperty("key_manager_password");
         if (keyStorePassword == null || keyStorePassword.isEmpty()) {
             //key_store_password or key_manager_password are empty
             LOG.warn("You have configured the SSL port but not the key_store_password, SSL not started");
@@ -247,8 +218,8 @@ public class NettyAcceptor implements ServerAcceptor {
         });
     }
 
-    public void close() {
-        if (m_workerGroup == null) {
+	public void close() {
+		if (m_workerGroup == null) {
             throw new IllegalStateException("Invoked close on an Acceptor that wasn't initialized");
         }
         if (m_bossGroup == null) {
@@ -260,6 +231,35 @@ public class NettyAcceptor implements ServerAcceptor {
         MessageMetrics metrics = m_metricsCollector.computeMetrics();
         //LOG.info(String.format("Bytes read: %d, bytes wrote: %d", metrics.readBytes(), metrics.wroteBytes()));
         LOG.info("Msg read: {}, msg wrote: {}", metrics.messagesRead(), metrics.messagesWrote());
-    }
-    
+	}
+
+	static class WebSocketFrameToByteBufDecoder extends MessageToMessageDecoder<BinaryWebSocketFrame> {
+
+		@Override
+		protected void decode(ChannelHandlerContext chc, BinaryWebSocketFrame frame, List<Object> out) throws Exception {
+			//convert the frame to a ByteBuf
+			ByteBuf bb = frame.content();
+			//System.out.println("WebSocketFrameToByteBufDecoder decode - " + ByteBufUtil.hexDump(bb));
+			bb.retain();
+			out.add(bb);
+		}
+	}
+
+	static class ByteBufToWebSocketFrameEncoder extends MessageToMessageEncoder<ByteBuf> {
+
+		@Override
+		protected void encode(ChannelHandlerContext chc, ByteBuf bb, List<Object> out) throws Exception {
+			//convert the ByteBuf to a WebSocketFrame
+			BinaryWebSocketFrame result = new BinaryWebSocketFrame();
+			//System.out.println("ByteBufToWebSocketFrameEncoder encode - " + ByteBufUtil.hexDump(bb));
+			result.content().writeBytes(bb);
+			out.add(result);
+		}
+	}
+
+	abstract class PipelineInitializer {
+
+		abstract void init(ChannelPipeline pipeline) throws Exception;
+	}
+
 }

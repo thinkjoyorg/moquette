@@ -15,44 +15,29 @@
  */
 package org.eclipse.moquette.spi.impl;
 
+import java.nio.ByteBuffer;
+import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.dsl.Disruptor;
-import java.nio.ByteBuffer;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import org.eclipse.moquette.proto.messages.*;
+import org.eclipse.moquette.proto.messages.AbstractMessage.QOSType;
+import org.eclipse.moquette.server.*;
 import org.eclipse.moquette.spi.IMatchingCondition;
 import org.eclipse.moquette.spi.IMessagesStore;
 import org.eclipse.moquette.spi.ISessionsStore;
 import org.eclipse.moquette.spi.impl.events.*;
 import org.eclipse.moquette.spi.impl.subscriptions.Subscription;
 import org.eclipse.moquette.spi.impl.subscriptions.SubscriptionsStore;
-import static org.eclipse.moquette.parser.netty.Utils.VERSION_3_1;
-import static org.eclipse.moquette.parser.netty.Utils.VERSION_3_1_1;
-import org.eclipse.moquette.proto.messages.AbstractMessage;
-import org.eclipse.moquette.proto.messages.AbstractMessage.QOSType;
-import org.eclipse.moquette.proto.messages.ConnAckMessage;
-import org.eclipse.moquette.proto.messages.ConnectMessage;
-import org.eclipse.moquette.proto.messages.DisconnectMessage;
-import org.eclipse.moquette.proto.messages.PubAckMessage;
-import org.eclipse.moquette.proto.messages.PubCompMessage;
-import org.eclipse.moquette.proto.messages.PubRecMessage;
-import org.eclipse.moquette.proto.messages.PubRelMessage;
-import org.eclipse.moquette.proto.messages.PublishMessage;
-import org.eclipse.moquette.proto.messages.SubAckMessage;
-import org.eclipse.moquette.proto.messages.SubscribeMessage;
-import org.eclipse.moquette.proto.messages.UnsubAckMessage;
-import org.eclipse.moquette.proto.messages.UnsubscribeMessage;
-import org.eclipse.moquette.server.ConnectionDescriptor;
-import org.eclipse.moquette.server.Constants;
-import org.eclipse.moquette.server.IAuthenticator;
-import org.eclipse.moquette.server.ServerChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import redis.clients.jedis.Jedis;
+
+import static org.eclipse.moquette.parser.netty.Utils.VERSION_3_1;
+import static org.eclipse.moquette.parser.netty.Utils.VERSION_3_1_1;
 
 /**
  * Class responsible to handle the logic of MQTT protocol it's the director of
@@ -64,39 +49,7 @@ import org.slf4j.LoggerFactory;
  */
 class ProtocolProcessor implements EventHandler<ValueEvent> {
     
-    static final class WillMessage {
-        private final String topic;
-        private final ByteBuffer payload;
-        private final boolean retained;
-        private final QOSType qos;
-
-        public WillMessage(String topic, ByteBuffer payload, boolean retained, QOSType qos) {
-            this.topic = topic;
-            this.payload = payload;
-            this.retained = retained;
-            this.qos = qos;
-        }
-
-        public String getTopic() {
-            return topic;
-        }
-
-        public ByteBuffer getPayload() {
-            return payload;
-        }
-
-        public boolean isRetained() {
-            return retained;
-        }
-
-        public QOSType getQos() {
-            return qos;
-        }
-        
-    }
-    
     private static final Logger LOG = LoggerFactory.getLogger(ProtocolProcessor.class);
-    
     private Map<String, ConnectionDescriptor> m_clientIDs = new HashMap<>();
     private SubscriptionsStore subscriptions;
     private IMessagesStore m_messagesStore;
@@ -104,12 +57,10 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
     private IAuthenticator m_authenticator;
     //maps clientID to Will testament, if specified on CONNECT
     private Map<String, WillMessage> m_willStore = new HashMap<>();
-    
     private ExecutorService m_executor;
     private RingBuffer<ValueEvent> m_ringBuffer;
-
     ProtocolProcessor() {}
-    
+
     /**
      * @param subscriptions the subscription store where are stored all the existing
      *  clients subscriptions.
@@ -118,7 +69,7 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
      * @param sessionsStore the clients sessions store, used to persist subscriptions.
      * @param authenticator the authenticator used in connect messages
      */
-    void init(SubscriptionsStore subscriptions, IMessagesStore storageService, 
+    void init(SubscriptionsStore subscriptions, IMessagesStore storageService,
             ISessionsStore sessionsStore,
             IAuthenticator authenticator) {
         //m_clientIDs = clientIDs;
@@ -127,7 +78,7 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
         m_authenticator = authenticator;
         m_messagesStore = storageService;
         m_sessionsStore = sessionsStore;
-        
+
         //init the output ringbuffer
         m_executor = Executors.newFixedThreadPool(1);
 
@@ -150,7 +101,6 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
             session.close(false);
             return;
         }
-
         if (msg.getClientID() == null || msg.getClientID().length() == 0) {
             ConnAckMessage okResp = new ConnAckMessage();
             okResp.setReturnCode(ConnAckMessage.IDENTIFIER_REJECTED);
@@ -226,18 +176,18 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
         LOG.debug("processConnect sent OK ConnAck");
         session.write(okResp);
         LOG.info("Connected client ID <{}> with clean session {}", msg.getClientID(), msg.isCleanSession());
-        
+
         LOG.info("Create persistent session for clientID {}", msg.getClientID());
         m_sessionsStore.addNewSubscription(Subscription.createEmptySubscription(msg.getClientID(), true), msg.getClientID()); //null means EmptySubscription
-        
+
         if (!msg.isCleanSession()) {
             //force the republish of stored QoS1 and QoS2
             republishStoredInSession(msg.getClientID());
         }
     }
 
-    /**
-     * Republish QoS1 and QoS2 messages stored into the session for the clientID.
+	/**
+	 * Republish QoS1 and QoS2 messages stored into the session for the clientID.
      * */
     private void republishStoredInSession(String clientID) {
         LOG.trace("republishStoredInSession invoked");
@@ -254,7 +204,7 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
             m_messagesStore.removeMessageInSession(clientID, pubEvt.getMessageID());
         }
     }
-    
+
     @MQTTMessage(message = PubAckMessage.class)
     void processPubAck(ServerChannel session, PubAckMessage msg) {
         String clientID = (String) session.getAttribute(Constants.ATTR_CLIENTID);
@@ -283,10 +233,10 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
         boolean retain = msg.isRetainFlag();
         processPublish(clientID, topic, qos, message, retain, msg.getMessageID());
     }
-        
-    private void processPublish(String clientID, String topic, QOSType qos, ByteBuffer message, boolean retain, Integer messageID) { 
-        LOG.info("Publish received from clientID <{}> on topic <{}> with QoS {}",
-                clientID, topic, qos);
+
+	private void processPublish(String clientID, String topic, QOSType qos, ByteBuffer message, boolean retain, Integer messageID) {
+		LOG.info("Publish received from clientID <{}> on topic <{}> with QoS {}",
+				clientID, topic, qos);
 
         String publishKey = null;
         if (qos == AbstractMessage.QOSType.LEAST_ONE) {
@@ -320,14 +270,14 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 
         if (retain) {
             if (qos == AbstractMessage.QOSType.MOST_ONE) {
-                //QoS == 0 && retain => clean old retained 
-                m_messagesStore.cleanRetained(topic);
+	            //QoS == 0 && retain => clean old retained
+	            m_messagesStore.cleanRetained(topic);
             } else {
                 m_messagesStore.storeRetained(topic, message, qos);
             }
         }
     }
-    
+
     /**
      * Specialized version to publish will testament message.
      */
@@ -352,11 +302,11 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
             if (qos.ordinal() > sub.getRequestedQos().ordinal()) {
                 qos = sub.getRequestedQos();
             }
-            
+
             ByteBuffer message = origMessage.duplicate();
-            LOG.debug("Broker republishing to client <{}> topic <{}> qos <{}>, active {}", 
-                    sub.getClientId(), sub.getTopicFilter(), qos, sub.isActive());
-            
+	        LOG.debug("Broker republishing to client <{}> topic <{}> qos <{}>, active {}",
+			        sub.getClientId(), sub.getTopicFilter(), qos, sub.isActive());
+
             if (qos == AbstractMessage.QOSType.MOST_ONE && sub.isActive()) {
                 //QoS 0
                 sendPublish(sub.getClientId(), topic, qos, message, false);
@@ -396,7 +346,7 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
         pubMessage.setTopicName(topic);
         pubMessage.setQos(qos);
         pubMessage.setPayload(message);
-        
+
         LOG.info("send publish message to <{}> on topic <{}>", clientId, topic);
         if (LOG.isDebugEnabled()) {
             LOG.debug("content <{}>", DebugUtils.payload2Str(message));
@@ -512,32 +462,34 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
     @MQTTMessage(message = DisconnectMessage.class)
     void processDisconnect(ServerChannel session, DisconnectMessage msg) throws InterruptedException {
         String clientID = (String) session.getAttribute(Constants.ATTR_CLIENTID);
-        boolean cleanSession = (Boolean) session.getAttribute(Constants.CLEAN_SESSION);
-        if (cleanSession) {
-            //cleanup topic subscriptions
-            cleanSession(clientID);
-        }
+	    boolean cleanSession = (Boolean) session.getAttribute(Constants.CLEAN_SESSION);
+	    cleanRouteByClientID(clientID);
+	    if (cleanSession) {
+		    //cleanup topic subscriptions
+		    cleanSession(clientID);
+	    }
+
+
 //        m_notifier.disconnect(evt.getSession());
         m_clientIDs.remove(clientID);
         session.close(true);
 
         //de-activate the subscriptions for this ClientID
         subscriptions.deactivate(clientID);
-        //cleanup the will store
-        m_willStore.remove(clientID);
-        
-        LOG.info("Disconnected client <{}> with clean session {}", clientID, cleanSession);
+	    //cleanup the will store
+	    m_willStore.remove(clientID);
+
+	    LOG.info("Disconnected client <{}> with clean session {}", clientID, cleanSession);
     }
-    
-    void processConnectionLost(LostConnectionEvent evt) {
-        String clientID = evt.clientID;
-        if (m_clientIDs.containsKey(clientID)) {
+
+	void processConnectionLost(LostConnectionEvent evt) {
+		String clientID = evt.clientID;
+		if (m_clientIDs.containsKey(clientID)) {
             if (!m_clientIDs.get(clientID).getSession().equals(evt.session)) {
                 LOG.info("Received a lost connection with client <{}> for a not matching session", clientID);
                 return;
             }
         }
-
         //If already removed a disconnect message was already processed for this clientID
         if (m_clientIDs.remove(clientID) != null) {
 
@@ -552,11 +504,11 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
             m_willStore.remove(clientID);
         }
     }
-    
-    /**
-     * Remove the clientID from topic subscription, if not previously subscribed,
-     * doesn't reply any error
-     */
+
+	/**
+	 * Remove the clientID from topic subscription, if not previously subscribed,
+	 * doesn't reply any error
+	 */
     @MQTTMessage(message = UnsubscribeMessage.class)
     void processUnsubscribe(ServerChannel session, UnsubscribeMessage msg) {
         List<String> topics = msg.topicFilters();
@@ -566,6 +518,8 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 
         for (String topic : topics) {
             subscriptions.removeSubscription(topic, clientID);
+
+	        cleanRouteByTopic(topic);
         }
         //ack the client
         UnsubAckMessage ackMessage = new UnsubAckMessage();
@@ -585,6 +539,8 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
             AbstractMessage.QOSType qos = AbstractMessage.QOSType.values()[req.getQos()];
             Subscription newSubscription = new Subscription(clientID, req.getTopicFilter(), qos, cleanSession);
             subscribeSingleTopic(newSubscription, req.getTopicFilter());
+
+	        addRoute(req.getTopicFilter(), session.getCurrentNode().getNodeUri());
         }
 
         //ack the client
@@ -596,22 +552,46 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
             AbstractMessage.QOSType qos = AbstractMessage.QOSType.values()[req.getQos()];
             ackMessage.addType(qos);
         }
-        
-        LOG.debug("replying with SubAck to MSG ID {}", msg.getMessageID());
-        session.write(ackMessage);
+
+	    LOG.debug("replying with SubAck to MSG ID {}", msg.getMessageID());
+	    session.write(ackMessage);
     }
-    
-    private void subscribeSingleTopic(Subscription newSubscription, final String topic) {
-        LOG.info("<{}> subscribed to topic <{}> with QoS {}", 
-                newSubscription.getClientId(), topic, 
-                AbstractMessage.QOSType.formatQoS(newSubscription.getRequestedQos()));
-        String clientID = newSubscription.getClientId();
+
+	//add topic ---> Node router to redis
+	private void addRoute(String topic, String nodeUri) {
+		Jedis jedis = RedisPool.getPool().getResource();
+		jedis.sadd(topic, nodeUri);
+		RedisPool.getPool().returnResource(jedis);
+	}
+
+	//remove all this client's route from redis
+	private void cleanRouteByClientID(String clientID) {
+		Set<Subscription> subscription = m_sessionsStore.getSubscriptionById(clientID);
+		for (Subscription s : subscription) {
+			Jedis jedis = RedisPool.getPool().getResource();
+			jedis.del(s.getTopicFilter());
+			RedisPool.getPool().returnResource(jedis);
+		}
+	}
+
+	//remove topic ---> node route from reids.
+	private void cleanRouteByTopic(String topic) {
+		Jedis jedis = RedisPool.getPool().getResource();
+		jedis.del(topic);
+		RedisPool.getPool().returnResource(jedis);
+	}
+
+	private void subscribeSingleTopic(Subscription newSubscription, final String topic) {
+		LOG.info("<{}> subscribed to topic <{}> with QoS {}",
+				newSubscription.getClientId(), topic,
+				AbstractMessage.QOSType.formatQoS(newSubscription.getRequestedQos()));
+		String clientID = newSubscription.getClientId();
         m_sessionsStore.addNewSubscription(newSubscription, clientID);
         subscriptions.add(newSubscription);
 
-        //scans retained messages to be published to the new subscription
-        Collection<IMessagesStore.StoredMessage> messages = m_messagesStore.searchMatching(new IMatchingCondition() {
-            public boolean match(String key) {
+		//scans retained messages to be published to the new subscription
+		Collection<IMessagesStore.StoredMessage> messages = m_messagesStore.searchMatching(new IMatchingCondition() {
+			public boolean match(String key) {
                 return  SubscriptionsStore.matchTopics(key, topic);
             }
         });
@@ -622,22 +602,53 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
             sendPublish(newSubscription.getClientId(), storedMsg.getTopic(), storedMsg.getQos(), storedMsg.getPayload(), true);
         }
     }
-    
-    private void disruptorPublish(OutputMessagingEvent msgEvent) {
+
+	private void disruptorPublish(OutputMessagingEvent msgEvent) {
         LOG.debug("disruptorPublish publishing event on output {}", msgEvent);
         long sequence = m_ringBuffer.next();
         ValueEvent event = m_ringBuffer.get(sequence);
 
         event.setEvent(msgEvent);
-        
-        m_ringBuffer.publish(sequence); 
+
+		m_ringBuffer.publish(sequence);
     }
 
-    public void onEvent(ValueEvent t, long l, boolean bln) throws Exception {
-        MessagingEvent evt = t.getEvent();
+	public void onEvent(ValueEvent t, long l, boolean bln) throws Exception {
+		MessagingEvent evt = t.getEvent();
         //It's always of type OutputMessagingEvent
         OutputMessagingEvent outEvent = (OutputMessagingEvent) evt;
         outEvent.getChannel().write(outEvent.getMessage());
-    }
+	}
+
+	static final class WillMessage {
+		private final String topic;
+		private final ByteBuffer payload;
+		private final boolean retained;
+		private final QOSType qos;
+
+		public WillMessage(String topic, ByteBuffer payload, boolean retained, QOSType qos) {
+			this.topic = topic;
+			this.payload = payload;
+			this.retained = retained;
+			this.qos = qos;
+		}
+
+		public String getTopic() {
+			return topic;
+		}
+
+		public ByteBuffer getPayload() {
+			return payload;
+		}
+
+		public boolean isRetained() {
+			return retained;
+		}
+
+		public QOSType getQos() {
+			return qos;
+		}
+
+	}
 
 }
