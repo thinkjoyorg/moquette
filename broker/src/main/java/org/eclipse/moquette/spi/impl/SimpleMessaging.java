@@ -15,28 +15,30 @@
  */
 package org.eclipse.moquette.spi.impl;
 
-import com.lmax.disruptor.EventHandler;
-import com.lmax.disruptor.RingBuffer;
-import com.lmax.disruptor.dsl.Disruptor;
-
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import org.eclipse.moquette.spi.IMessaging;
-import org.eclipse.moquette.spi.ISessionsStore;
-import org.eclipse.moquette.spi.IMessagesStore;
-import org.eclipse.moquette.spi.impl.events.*;
-import org.eclipse.moquette.spi.impl.subscriptions.SubscriptionsStore;
-import org.eclipse.moquette.spi.persistence.MapDBPersistentStore;
-import org.eclipse.moquette.proto.messages.*;
+import com.lmax.disruptor.EventHandler;
+import com.lmax.disruptor.RingBuffer;
+import com.lmax.disruptor.dsl.Disruptor;
+import org.HdrHistogram.Histogram;
+import org.eclipse.moquette.proto.messages.AbstractMessage;
 import org.eclipse.moquette.server.IAuthenticator;
 import org.eclipse.moquette.server.ServerChannel;
+import org.eclipse.moquette.spi.IMessagesStore;
+import org.eclipse.moquette.spi.IMessaging;
+import org.eclipse.moquette.spi.ISessionsStore;
+import org.eclipse.moquette.spi.impl.events.LostConnectionEvent;
+import org.eclipse.moquette.spi.impl.events.MessagingEvent;
+import org.eclipse.moquette.spi.impl.events.ProtocolEvent;
+import org.eclipse.moquette.spi.impl.events.StopEvent;
+import org.eclipse.moquette.spi.impl.subscriptions.SubscriptionsStore;
+import org.eclipse.moquette.spi.persistence.MapDBPersistentStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.HdrHistogram.Histogram;
 
 /**
  *
@@ -51,29 +53,21 @@ import org.HdrHistogram.Histogram;
 public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 
     private static final Logger LOG = LoggerFactory.getLogger(SimpleMessaging.class);
-    
-    private SubscriptionsStore subscriptions;
-    
-    private RingBuffer<ValueEvent> m_ringBuffer;
-
+	private static SimpleMessaging INSTANCE;
+	private final ProtocolProcessor m_processor = new ProtocolProcessor();
+	private final AnnotationSupport annotationSupport = new AnnotationSupport();
+	CountDownLatch m_stopLatch;
+	Histogram histogram = new Histogram(5);
+	private SubscriptionsStore subscriptions;
+	private RingBuffer<ValueEvent> m_ringBuffer;
     private IMessagesStore m_storageService;
     private ISessionsStore m_sessionsStore;
-
     private ExecutorService m_executor;
     private Disruptor<ValueEvent> m_disruptor;
+	private boolean benchmarkEnabled = false;
 
-    private static SimpleMessaging INSTANCE;
-    
-    private final ProtocolProcessor m_processor = new ProtocolProcessor();
-    private final AnnotationSupport annotationSupport = new AnnotationSupport();
-    private boolean benchmarkEnabled = false;
-    
-    CountDownLatch m_stopLatch;
-
-    Histogram histogram = new Histogram(5);
-    
-    private SimpleMessaging() {
-    }
+	private SimpleMessaging() {
+	}
 
     public static SimpleMessaging getInstance() {
         if (INSTANCE == null) {
@@ -85,9 +79,9 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
     public void init(Properties configProps) {
         subscriptions = new SubscriptionsStore();
         m_executor = Executors.newFixedThreadPool(1);
-        m_disruptor = new Disruptor<>(ValueEvent.EVENT_FACTORY, 1024 * 32, m_executor);
-        /*Disruptor<ValueEvent> m_disruptor = new Disruptor<ValueEvent>(ValueEvent.EVENT_FACTORY, 1024 * 32, m_executor,
-                ProducerType.MULTI, new BusySpinWaitStrategy());*/
+	    m_disruptor = new Disruptor<>(ValueEvent.EVENT_FACTORY, 1024 * 32, m_executor);
+	    /*Disruptor<ValueEvent> m_disruptor = new Disruptor<ValueEvent>(ValueEvent.EVENT_FACTORY, 1024 * 32, m_executor,
+	            ProducerType.MULTI, new BusySpinWaitStrategy());*/
         m_disruptor.handleEventsWith(this);
         m_disruptor.start();
 
@@ -159,10 +153,10 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
             try {
                 long startTime = System.nanoTime();
                 annotationSupport.dispatch(session, message);
-                if (benchmarkEnabled) {
-                    long delay = System.nanoTime() - startTime;
-                    histogram.recordValue(delay);
-                }
+	            if (benchmarkEnabled) {
+		            long delay = System.nanoTime() - startTime;
+		            histogram.recordValue(delay);
+	            }
             } catch (Throwable th) {
                 LOG.error("Grave error processing the message {} for {}", message, session, th);
             }
@@ -170,22 +164,22 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
     }
 
     private void processInit(Properties props) {
-        benchmarkEnabled = Boolean.parseBoolean(System.getProperty("moquette.processor.benchmark", "false"));
+	    benchmarkEnabled = Boolean.parseBoolean(System.getProperty("moquette.processor.benchmark", "false"));
 
         //TODO use a property to select the storage path
-        MapDBPersistentStore mapStorage = new MapDBPersistentStore(props.getProperty(org.eclipse.moquette.commons.Constants.PERSISTENT_STORE_PROPERTY_NAME, ""));
-        m_storageService = mapStorage;
-        m_sessionsStore = mapStorage;
+	    MapDBPersistentStore mapStorage = new MapDBPersistentStore(props.getProperty(org.eclipse.moquette.commons.Constants.PERSISTENT_STORE_PROPERTY_NAME, ""));
+	    m_storageService = mapStorage;
+	    m_sessionsStore = mapStorage;
 
         m_storageService.initStore();
         
         //List<Subscription> storedSubscriptions = m_sessionsStore.listAllSubscriptions();
         //subscriptions.init(storedSubscriptions);
         subscriptions.init(m_sessionsStore);
-        
-        String passwdPath = props.getProperty(org.eclipse.moquette.commons.Constants.PASSWORD_FILE_PROPERTY_NAME, "");
-        String configPath = System.getProperty("moquette.path", null);
-        IAuthenticator authenticator;
+
+	    String passwdPath = props.getProperty(org.eclipse.moquette.commons.Constants.PASSWORD_FILE_PROPERTY_NAME, "");
+	    String configPath = System.getProperty("moquette.path", null);
+	    IAuthenticator authenticator;
         if (passwdPath.isEmpty()) {
             authenticator = new AcceptAllAuthenticator();
         } else {
@@ -206,9 +200,9 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
         subscriptions = null;
         m_stopLatch.countDown();
 
-        if (benchmarkEnabled) {
-            //log metrics
-            histogram.outputPercentileDistribution(System.out, 1000.0);
-        }
+	    if (benchmarkEnabled) {
+		    //log metrics
+		    histogram.outputPercentileDistribution(System.out, 1000.0);
+	    }
     }
 }

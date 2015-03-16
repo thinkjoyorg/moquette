@@ -15,17 +15,19 @@
  */
 package org.eclipse.moquette.parser.netty;
 
+import java.io.UnsupportedEncodingException;
+import java.util.List;
+
 import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.CorruptedFrameException;
 import io.netty.util.Attribute;
 import io.netty.util.AttributeKey;
 import io.netty.util.AttributeMap;
-import java.io.UnsupportedEncodingException;
-import java.util.List;
-import static org.eclipse.moquette.parser.netty.Utils.VERSION_3_1;
-import static org.eclipse.moquette.parser.netty.Utils.VERSION_3_1_1;
 import org.eclipse.moquette.proto.messages.AbstractMessage;
 import org.eclipse.moquette.proto.messages.ConnectMessage;
+
+import static org.eclipse.moquette.parser.netty.Utils.VERSION_3_1;
+import static org.eclipse.moquette.parser.netty.Utils.VERSION_3_1_1;
 
 /**
  *
@@ -33,10 +35,10 @@ import org.eclipse.moquette.proto.messages.ConnectMessage;
  */
 public class ConnectDecoder extends DemuxDecoder {
 
-    static final AttributeKey<Boolean> CONNECT_STATUS = AttributeKey.valueOf("connected");
-    
-    @Override
-    void decode(AttributeMap ctx, ByteBuf in, List<Object> out) throws UnsupportedEncodingException {
+	static final AttributeKey<Boolean> CONNECT_STATUS = AttributeKey.valueOf("connected");
+
+	@Override
+	void decode(AttributeMap ctx, ByteBuf in, List<Object> out) throws UnsupportedEncodingException {
         in.resetReaderIndex();
         //Common decoding part
         ConnectMessage message = new ConnectMessage();
@@ -120,18 +122,18 @@ public class ConnectDecoder extends DemuxDecoder {
             }
         }
 
-        boolean cleanSession = ((connFlags & 0x02) >> 1) == 1;
-        boolean willFlag = ((connFlags & 0x04) >> 2) == 1;
-        byte willQos = (byte) ((connFlags & 0x18) >> 3);
-        if (willQos > 2) {
+		boolean cleanSession = ((connFlags & 0x02) >> 1) == 1;
+		boolean willFlag = ((connFlags & 0x04) >> 2) == 1;
+		byte willQos = (byte) ((connFlags & 0x18) >> 3);
+		if (willQos > 2) {
             in.resetReaderIndex();
             throw new CorruptedFrameException("Expected will QoS in range 0..2 but found: " + willQos);
         }
-        boolean willRetain = ((connFlags & 0x20) >> 5) == 1;
-        boolean passwordFlag = ((connFlags & 0x40) >> 6) == 1;
-        boolean userFlag = ((connFlags & 0x80) >> 7) == 1;
-        //a password is true iff user is true.
-        if (!userFlag && passwordFlag) {
+		boolean willRetain = ((connFlags & 0x20) >> 5) == 1;
+		boolean passwordFlag = ((connFlags & 0x40) >> 6) == 1;
+		boolean userFlag = ((connFlags & 0x80) >> 7) == 1;
+		//a password is true iff user is true.
+		if (!userFlag && passwordFlag) {
             in.resetReaderIndex();
             throw new CorruptedFrameException("Expected password flag to true if the user flag is true but was: " + passwordFlag);
         }

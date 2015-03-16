@@ -1,7 +1,15 @@
-@GrabResolver(name='Paho', root='https://repo.eclipse.org/content/repositories/paho-releases/')
+@GrabResolver(name = 'Paho', root = 'https://repo.eclipse.org/content/repositories/paho-releases/')
 //@Grab(group='org.eclipse.paho', module='org.eclipse.paho.client.mqttv3', version='1.0.1', ext='jar')
-@Grab(group='org.fusesource.mqtt-client', module='mqtt-client', version='1.10')
+@Grab(group = 'org.fusesource.mqtt-client', module = 'mqtt-client', version = '1.10')
+import org.fusesource.mqtt.client.BlockingConnection
+@GrabResolver(name = 'Paho', root = 'https://repo.eclipse.org/content/repositories/paho-releases/')
+//@Grab(group='org.eclipse.paho', module='org.eclipse.paho.client.mqttv3', version='1.0.1', ext='jar')
+@Grab(group = 'org.fusesource.mqtt-client', module = 'mqtt-client', version = '1.10')
 
+import org.fusesource.mqtt.client.BlockingConnection
+@GrabResolver(name = 'Paho', root = 'https://repo.eclipse.org/content/repositories/paho-releases/')
+//@Grab(group='org.eclipse.paho', module='org.eclipse.paho.client.mqttv3', version='1.0.1', ext='jar')
+@Grab(group = 'org.fusesource.mqtt-client', module = 'mqtt-client', version = '1.10')
 import org.fusesource.mqtt.client.BlockingConnection
 import org.fusesource.mqtt.client.MQTT
 import org.fusesource.mqtt.client.Message

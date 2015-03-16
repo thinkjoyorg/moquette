@@ -15,12 +15,13 @@
  */
 package org.eclipse.moquette.parser.netty;
 
+import java.io.UnsupportedEncodingException;
+
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.CorruptedFrameException;
 import io.netty.util.Attribute;
 import io.netty.util.AttributeMap;
-import java.io.UnsupportedEncodingException;
 import org.eclipse.moquette.proto.messages.AbstractMessage;
 import org.slf4j.LoggerFactory;
 

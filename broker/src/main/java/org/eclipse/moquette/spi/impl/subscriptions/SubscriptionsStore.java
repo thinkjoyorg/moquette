@@ -30,46 +30,92 @@ import org.slf4j.LoggerFactory;
  */
 public class SubscriptionsStore {
 
-    public static interface IVisitor<T> {
-        void visit(TreeNode node);
-        
-        T getResult();
-    }
-    
-    private class DumpTreeVisitor implements IVisitor<String> {
-        
-        String s = "";
+	private static final Logger LOG = LoggerFactory.getLogger(SubscriptionsStore.class);
+	private TreeNode subscriptions = new TreeNode(null);
+	private ISessionsStore m_sessionsStore;
 
-        public void visit(TreeNode node) {
-            String subScriptionsStr = "";
-            for (Subscription sub : node.m_subscriptions) {
-                subScriptionsStr += sub.toString();
-            }
-            s += node.getToken() == null ? "" : node.getToken().toString();
-            s += subScriptionsStr + "\n";
-        }
-        
-        public String getResult() {
-            return s;
-        }
-    }
-    
-    private class SubscriptionTreeCollector implements IVisitor<List<Subscription>> {
-        
-        private List<Subscription> m_allSubscriptions = new ArrayList<Subscription>();
+	/**
+	 * Verify if the 2 topics matching respecting the rules of MQTT Appendix A
+	 */
+	//TODO reimplement with iterators or with queues
+	public static boolean matchTopics(String msgTopic, String subscriptionTopic) {
+		try {
+			List<Token> msgTokens = SubscriptionsStore.parseTopic(msgTopic);
+			List<Token> subscriptionTokens = SubscriptionsStore.parseTopic(subscriptionTopic);
+			int i = 0;
+			Token subToken = null;
+			for (; i < subscriptionTokens.size(); i++) {
+				subToken = subscriptionTokens.get(i);
+				if (subToken != Token.MULTI && subToken != Token.SINGLE) {
+					if (i >= msgTokens.size()) {
+						return false;
+					}
+					Token msgToken = msgTokens.get(i);
+					if (!msgToken.equals(subToken)) {
+						return false;
+					}
+				} else {
+					if (subToken == Token.MULTI) {
+						return true;
+					}
+					if (subToken == Token.SINGLE) {
+						//skip a step forward
+					}
+				}
+			}
+			//if last token was a SINGLE then treat it as an empty
+//            if (subToken == Token.SINGLE && (i - msgTokens.size() == 1)) {
+//               i--;
+//            }
+			return i == msgTokens.size();
+		} catch (ParseException ex) {
+			LOG.error(null, ex);
+			throw new RuntimeException(ex);
+		}
+	}
 
-        public void visit(TreeNode node) {
-            m_allSubscriptions.addAll(node.subscriptions());
-        }
-        
-        public List<Subscription> getResult() {
-            return m_allSubscriptions;
-        }
-    }
+	protected static List<Token> parseTopic(String topic) throws ParseException {
+		List<Token> res = new ArrayList<>();
+		String[] splitted = topic.split("/");
 
-    private TreeNode subscriptions = new TreeNode(null);
-    private ISessionsStore m_sessionsStore;
-    private static final Logger LOG = LoggerFactory.getLogger(SubscriptionsStore.class);
+		if (splitted.length == 0) {
+			res.add(Token.EMPTY);
+		}
+
+		if (topic.endsWith("/")) {
+			//Add a fictious space
+			String[] newSplitted = new String[splitted.length + 1];
+			System.arraycopy(splitted, 0, newSplitted, 0, splitted.length);
+			newSplitted[splitted.length] = "";
+			splitted = newSplitted;
+		}
+
+		for (int i = 0; i < splitted.length; i++) {
+			String s = splitted[i];
+			if (s.isEmpty()) {
+//                if (i != 0) {
+//                    throw new ParseException("Bad format of topic, expetec topic name between separators", i);
+//                }
+				res.add(Token.EMPTY);
+			} else if (s.equals("#")) {
+				//check that multi is the last symbol
+				if (i != splitted.length - 1) {
+					throw new ParseException("Bad format of topic, the multi symbol (#) has to be the last one after a separator", i);
+				}
+				res.add(Token.MULTI);
+			} else if (s.contains("#")) {
+				throw new ParseException("Bad format of topic, invalid subtopic name: " + s, i);
+			} else if (s.equals("+")) {
+				res.add(Token.SINGLE);
+			} else if (s.contains("+")) {
+				throw new ParseException("Bad format of topic, invalid subtopic name: " + s, i);
+			} else {
+				res.add(new Token(s));
+			}
+		}
+
+		return res;
+	}
 
     /**
      * Initialize the subscription tree with the list of subscriptions.
@@ -91,7 +137,7 @@ public class SubscriptionsStore {
             LOG.debug("Finished loading. Subscription tree after {}", dumpTree());
         }
     }
-    
+
     protected void addDirect(Subscription newSubscription) {
         TreeNode current = findMatchingNode(newSubscription.topicFilter);
         current.addSubscription(newSubscription);
@@ -125,18 +171,17 @@ public class SubscriptionsStore {
         return current;
     }
 
-    public void add(Subscription newSubscription) {
-        addDirect(newSubscription);
+	public void add(Subscription newSubscription) {
+		addDirect(newSubscription);
 
         //log the subscription
 //        String clientID = newSubscription.getClientId();
 //        m_storageService.addNewSubscription(newSubscription, clientID);
     }
 
-
     public void removeSubscription(String topic, String clientID) {
         TreeNode matchNode = findMatchingNode(topic);
-        
+
         //search for the subscription to remove
         Subscription toBeRemoved = null;
         for (Subscription sub : matchNode.subscriptions()) {
@@ -145,29 +190,29 @@ public class SubscriptionsStore {
                 break;
             }
         }
-        
+
         if (toBeRemoved != null) {
             matchNode.subscriptions().remove(toBeRemoved);
         }
     }
-    
-    /**
-     * TODO implement testing
-     */
-    public void clearAllSubscriptions() {
-        SubscriptionTreeCollector subsCollector = new SubscriptionTreeCollector();
-        bfsVisit(subscriptions, subsCollector);
-        
-        List<Subscription> allSubscriptions = subsCollector.getResult();
-        for (Subscription subscription : allSubscriptions) {
-            removeSubscription(subscription.getTopicFilter(), subscription.getClientId());
-        }
-    }
 
-    /**
-     * Visit the topics tree to remove matching subscriptions with clientID
-     */
-    public void removeForClient(String clientID) {
+	/**
+	 * TODO implement testing
+	 */
+	public void clearAllSubscriptions() {
+		SubscriptionTreeCollector subsCollector = new SubscriptionTreeCollector();
+        bfsVisit(subscriptions, subsCollector);
+
+		List<Subscription> allSubscriptions = subsCollector.getResult();
+		for (Subscription subscription : allSubscriptions) {
+			removeSubscription(subscription.getTopicFilter(), subscription.getClientId());
+		}
+	}
+
+	/**
+	 * Visit the topics tree to remove matching subscriptions with clientID
+	 */
+	public void removeForClient(String clientID) {
         subscriptions.removeClientSubscriptions(clientID);
         //persist the update
         m_sessionsStore.wipeSubscriptions(clientID);
@@ -200,7 +245,7 @@ public class SubscriptionsStore {
         } catch (ParseException ex) {
             //TODO handle the parse exception
             LOG.error(null, ex);
-            return Collections.emptyList();
+	        return Collections.emptyList();
         }
 
         Queue<Token> tokenQueue = new LinkedBlockingDeque<Token>(tokens);
@@ -216,10 +261,10 @@ public class SubscriptionsStore {
     public int size() {
         return subscriptions.size();
     }
-    
-    public String dumpTree() {
-        DumpTreeVisitor visitor = new DumpTreeVisitor();
-        bfsVisit(subscriptions, visitor);
+
+	public String dumpTree() {
+		DumpTreeVisitor visitor = new DumpTreeVisitor();
+		bfsVisit(subscriptions, visitor);
         return visitor.getResult();
     }
     
@@ -232,87 +277,41 @@ public class SubscriptionsStore {
             bfsVisit(child, visitor);
         }
     }
-    
-    /**
-     * Verify if the 2 topics matching respecting the rules of MQTT Appendix A
-     */
-    //TODO reimplement with iterators or with queues
-    public static boolean matchTopics(String msgTopic, String subscriptionTopic) {
-        try {
-            List<Token> msgTokens = SubscriptionsStore.parseTopic(msgTopic);
-            List<Token> subscriptionTokens = SubscriptionsStore.parseTopic(subscriptionTopic);
-            int i = 0;
-            Token subToken = null;
-            for (; i< subscriptionTokens.size(); i++) {
-                subToken = subscriptionTokens.get(i);
-                if (subToken != Token.MULTI && subToken != Token.SINGLE) {
-                    if (i >= msgTokens.size()) {
-                        return false;
-                    }
-                    Token msgToken = msgTokens.get(i);
-                    if (!msgToken.equals(subToken)) {
-                        return false;
-                    }
-                } else {
-                    if (subToken == Token.MULTI) {
-                        return true;
-                    }
-                    if (subToken == Token.SINGLE) {
-                        //skip a step forward
-                    }
-                }
-            }
-            //if last token was a SINGLE then treat it as an empty
-//            if (subToken == Token.SINGLE && (i - msgTokens.size() == 1)) {
-//               i--; 
-//            }
-            return i == msgTokens.size();
-        } catch (ParseException ex) {
-            LOG.error(null, ex);
-            throw new RuntimeException(ex);
-        }
-    }
-    
-    protected static List<Token> parseTopic(String topic) throws ParseException {
-        List<Token> res = new ArrayList<>();
-        String[] splitted = topic.split("/");
 
-        if (splitted.length == 0) {
-            res.add(Token.EMPTY);
-        }
-        
-        if (topic.endsWith("/")) {
-            //Add a fictious space 
-            String[] newSplitted = new String[splitted.length + 1];
-            System.arraycopy(splitted, 0, newSplitted, 0, splitted.length); 
-            newSplitted[splitted.length] = "";
-            splitted = newSplitted;
-        }
-        
-        for (int i = 0; i < splitted.length; i++) {
-            String s = splitted[i];
-            if (s.isEmpty()) {
-//                if (i != 0) {
-//                    throw new ParseException("Bad format of topic, expetec topic name between separators", i);
-//                }
-                res.add(Token.EMPTY);
-            } else if (s.equals("#")) {
-                //check that multi is the last symbol
-                if (i != splitted.length - 1) {
-                    throw new ParseException("Bad format of topic, the multi symbol (#) has to be the last one after a separator", i);
-                }
-                res.add(Token.MULTI);
-            } else if (s.contains("#")) {
-                throw new ParseException("Bad format of topic, invalid subtopic name: " + s, i);
-            } else if (s.equals("+")) {
-                res.add(Token.SINGLE);
-            } else if (s.contains("+")) {
-                throw new ParseException("Bad format of topic, invalid subtopic name: " + s, i);
-            } else {
-                res.add(new Token(s));
-            }
-        }
+	public static interface IVisitor<T> {
+		void visit(TreeNode node);
 
-        return res;
-    }
+		T getResult();
+	}
+
+	private class DumpTreeVisitor implements IVisitor<String> {
+
+		String s = "";
+
+		public void visit(TreeNode node) {
+			String subScriptionsStr = "";
+			for (Subscription sub : node.m_subscriptions) {
+				subScriptionsStr += sub.toString();
+			}
+			s += node.getToken() == null ? "" : node.getToken().toString();
+			s += subScriptionsStr + "\n";
+		}
+
+		public String getResult() {
+			return s;
+		}
+	}
+
+	private class SubscriptionTreeCollector implements IVisitor<List<Subscription>> {
+
+		private List<Subscription> m_allSubscriptions = new ArrayList<Subscription>();
+
+		public void visit(TreeNode node) {
+			m_allSubscriptions.addAll(node.subscriptions());
+		}
+
+		public List<Subscription> getResult() {
+			return m_allSubscriptions;
+		}
+	}
 }

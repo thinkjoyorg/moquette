@@ -20,12 +20,12 @@ import java.text.ParseException;
 import java.util.Arrays;
 import java.util.List;
 
-import org.eclipse.moquette.spi.impl.MemoryStorageService;
 import org.eclipse.moquette.proto.messages.AbstractMessage;
-
-import static org.junit.Assert.*;
+import org.eclipse.moquette.spi.impl.MemoryStorageService;
 import org.junit.Before;
 import org.junit.Test;
+
+import static org.junit.Assert.*;
 
 /**
  *
@@ -38,22 +38,24 @@ public class SubscriptionsStoreTest {
     public SubscriptionsStoreTest() {
     }
 
-    @Before
-    public void setUp() throws IOException {
+	private static Token[] asArray(Object... l) {
+		Token[] tokens = new Token[l.length];
+		for (int i = 0; i < l.length; i++) {
+			Object o = l[i];
+			if (o instanceof Token) {
+				tokens[i] = (Token) o;
+			} else {
+				tokens[i] = new Token(o.toString());
+			}
+		}
+
+		return tokens;
+	}
+
+	@Before
+	public void setUp() throws IOException {
         store = new SubscriptionsStore();
         store.init(new MemoryStorageService());
-    }
-    
-    @Test
-    public void testParseTopic() throws ParseException {
-        List<Token> tokens = store.parseTopic("finance/stock/ibm");
-        assertEqualsSeq(asArray("finance", "stock", "ibm"), tokens);
-
-        tokens = store.parseTopic("/finance/stock/ibm");
-        assertEqualsSeq(asArray(Token.EMPTY, "finance", "stock", "ibm"), tokens);
-
-        tokens = store.parseTopic("/");
-        assertEqualsSeq(asArray(Token.EMPTY, Token.EMPTY), tokens);
     }
 
 //    @Test(expected = ParseException.class)
@@ -62,9 +64,21 @@ public class SubscriptionsStoreTest {
 //    }
 
     @Test
+    public void testParseTopic() throws ParseException {
+	    List<Token> tokens = store.parseTopic("finance/stock/ibm");
+	    assertEqualsSeq(asArray("finance", "stock", "ibm"), tokens);
+
+        tokens = store.parseTopic("/finance/stock/ibm");
+        assertEqualsSeq(asArray(Token.EMPTY, "finance", "stock", "ibm"), tokens);
+
+        tokens = store.parseTopic("/");
+        assertEqualsSeq(asArray(Token.EMPTY, Token.EMPTY), tokens);
+    }
+
+    @Test
     public void testParseTopicMultiValid() throws ParseException {
-        List<Token> tokens = store.parseTopic("finance/stock/#");
-        assertEqualsSeq(asArray("finance", "stock", Token.MULTI), tokens);
+	    List<Token> tokens = store.parseTopic("finance/stock/#");
+	    assertEqualsSeq(asArray("finance", "stock", Token.MULTI), tokens);
 
         tokens = store.parseTopic("#");
         assertEqualsSeq(asArray(Token.MULTI), tokens);
@@ -82,8 +96,8 @@ public class SubscriptionsStoreTest {
 
     @Test
     public void testParseTopicSingleValid() throws ParseException {
-        List<Token> tokens = store.parseTopic("finance/stock/+");
-        assertEqualsSeq(asArray("finance", "stock", Token.SINGLE), tokens);
+	    List<Token> tokens = store.parseTopic("finance/stock/+");
+	    assertEqualsSeq(asArray("finance", "stock", Token.SINGLE), tokens);
 
         tokens = store.parseTopic("+");
         assertEqualsSeq(asArray(Token.SINGLE), tokens);
@@ -97,16 +111,16 @@ public class SubscriptionsStoreTest {
         store.parseTopic("finance+");
     }
 
-    @Test
-    public void testMatchSimple() {
+	@Test
+	public void testMatchSimple() {
         Subscription slashSub = new Subscription("FAKE_CLI_ID_1", "/", AbstractMessage.QOSType.MOST_ONE, false);
         store.add(slashSub);
         assertTrue(store.matches("finance").isEmpty());
-        
+
         Subscription slashFinanceSub = new Subscription("FAKE_CLI_ID_1", "/finance", AbstractMessage.QOSType.MOST_ONE, false);
         store.add(slashFinanceSub);
         assertTrue(store.matches("finance").isEmpty());
-        
+
         assertTrue(store.matches("/finance").contains(slashFinanceSub));
         assertTrue(store.matches("/").contains(slashSub));
     }
@@ -116,9 +130,9 @@ public class SubscriptionsStoreTest {
         Subscription anySub = new Subscription("FAKE_CLI_ID_1", "#", AbstractMessage.QOSType.MOST_ONE, false);
         store.add(anySub);
         assertTrue(store.matches("finance").contains(anySub));
-        
-        Subscription financeAnySub = new Subscription("FAKE_CLI_ID_1", "finance/#", AbstractMessage.QOSType.MOST_ONE, false);
-        store.add(financeAnySub);
+
+	    Subscription financeAnySub = new Subscription("FAKE_CLI_ID_1", "finance/#", AbstractMessage.QOSType.MOST_ONE, false);
+	    store.add(financeAnySub);
         assertTrue(store.matches("finance").containsAll(Arrays.asList(financeAnySub, anySub)));
     }
     
@@ -128,20 +142,19 @@ public class SubscriptionsStoreTest {
         Subscription financeAnySub = new Subscription("FAKE_CLI_ID_1", "finance/#", AbstractMessage.QOSType.MOST_ONE, false);
         store.add(anySub);
         store.add(financeAnySub);
-        
-        //Verify
-        assertTrue(store.matches("finance/stock").containsAll(Arrays.asList(financeAnySub, anySub)));
+
+	    //Verify
+	    assertTrue(store.matches("finance/stock").containsAll(Arrays.asList(financeAnySub, anySub)));
         assertTrue(store.matches("finance/stock/ibm").containsAll(Arrays.asList(financeAnySub, anySub)));
     }
-    
     
     @Test
     public void testMatchingDeepMulti_two_layer() {
         Subscription financeAnySub = new Subscription("FAKE_CLI_ID_1", "finance/stock/#", AbstractMessage.QOSType.MOST_ONE, false);
         store.add(financeAnySub);
-        
-        //Verify
-        assertTrue(store.matches("finance/stock/ibm").contains(financeAnySub));
+
+	    //Verify
+	    assertTrue(store.matches("finance/stock/ibm").contains(financeAnySub));
     }
     
     @Test
@@ -149,9 +162,9 @@ public class SubscriptionsStoreTest {
         Subscription anySub = new Subscription("FAKE_CLI_ID_1", "+", AbstractMessage.QOSType.MOST_ONE, false);
         store.add(anySub);
         assertTrue(store.matches("finance").contains(anySub));
-        
-        Subscription financeOne = new Subscription("FAKE_CLI_ID_1", "finance/+", AbstractMessage.QOSType.MOST_ONE, false);
-        store.add(financeOne);
+
+	    Subscription financeOne = new Subscription("FAKE_CLI_ID_1", "finance/+", AbstractMessage.QOSType.MOST_ONE, false);
+	    store.add(financeOne);
         assertTrue(store.matches("finance/stock").contains(financeOne));
     }
     
@@ -159,11 +172,10 @@ public class SubscriptionsStoreTest {
     public void testMatchManySingle() {
         Subscription manySub = new Subscription("FAKE_CLI_ID_1", "+/+", AbstractMessage.QOSType.MOST_ONE, false);
         store.add(manySub);
-        
-        //verify
-        assertTrue(store.matches("/finance").contains(manySub));
+
+	    //verify
+	    assertTrue(store.matches("/finance").contains(manySub));
     }
-    
     
     @Test
     public void testMatchSlashSingle() {
@@ -171,24 +183,23 @@ public class SubscriptionsStoreTest {
         store.add(slashPlusSub);
         Subscription anySub = new Subscription("FAKE_CLI_ID_1", "+", AbstractMessage.QOSType.MOST_ONE, false);
         store.add(anySub);
-        
-        //Verify
-        assertEquals(1, store.matches("/finance").size());
+
+	    //Verify
+	    assertEquals(1, store.matches("/finance").size());
         assertTrue(store.matches("/finance").contains(slashPlusSub));
         assertFalse(store.matches("/finance").contains(anySub));
     }
-    
-    
-    @Test
-    public void testMatchManyDeepSingle() {
+
+	@Test
+	public void testMatchManyDeepSingle() {
         Subscription slashPlusSub = new Subscription("FAKE_CLI_ID_1", "/finance/+/ibm", AbstractMessage.QOSType.MOST_ONE, false);
         store.add(slashPlusSub);
-        
-        Subscription slashPlusDeepSub = new Subscription("FAKE_CLI_ID_1", "/+/stock/+", AbstractMessage.QOSType.MOST_ONE, false);
-        store.add(slashPlusDeepSub);
-        
-        //Verify
-        assertTrue(store.matches("/finance/stock/ibm").containsAll(Arrays.asList(slashPlusSub, slashPlusDeepSub)));
+
+		Subscription slashPlusDeepSub = new Subscription("FAKE_CLI_ID_1", "/+/stock/+", AbstractMessage.QOSType.MOST_ONE, false);
+		store.add(slashPlusDeepSub);
+
+		//Verify
+		assertTrue(store.matches("/finance/stock/ibm").containsAll(Arrays.asList(slashPlusSub, slashPlusDeepSub)));
     }
 
     @Test
@@ -198,8 +209,8 @@ public class SubscriptionsStoreTest {
         assertFalse(store.matches("finance/ibm").isEmpty());
     }
 
-    @Test
-    public void testMatchSimpleMulti_zeroLevel() {
+	@Test
+	public void testMatchSimpleMulti_zeroLevel() {
         //check  MULTI in case of zero level match
         store.add(new Subscription("FAKE_CLI_ID_1", "finance/#", AbstractMessage.QOSType.MOST_ONE, false));
         assertFalse(store.matches("finance").isEmpty());
@@ -245,29 +256,28 @@ public class SubscriptionsStoreTest {
         assertTrue(store.matches(topic).isEmpty());
     }
     
-    
     @Test
     public void testRemoveClientSubscriptions_existingClientID() {
         String cliendID = "FAKE_CLID_1";
         store.add(new Subscription(cliendID, "finance/#", AbstractMessage.QOSType.MOST_ONE, false));
-        
-        //Exercise
-        store.removeForClient(cliendID);
-        
-        //Verify
-        assertEquals(0, store.size());
+
+	    //Exercise
+	    store.removeForClient(cliendID);
+
+	    //Verify
+	    assertEquals(0, store.size());
     }
-    
-    @Test
-    public void testRemoveClientSubscriptions_notexistingClientID() {
+
+	@Test
+	public void testRemoveClientSubscriptions_notexistingClientID() {
         String cliendID = "FAKE_CLID_1";
         store.add(new Subscription(cliendID, "finance/#", AbstractMessage.QOSType.MOST_ONE, false));
-        
-        //Exercise
-        store.removeForClient("FAKE_CLID_2");
-        
-        //Verify
-        assertEquals(1, store.size());
+
+		//Exercise
+		store.removeForClient("FAKE_CLID_2");
+
+		//Verify
+		assertEquals(1, store.size());
     }
 
     @Test
@@ -284,9 +294,8 @@ public class SubscriptionsStoreTest {
         assertTrue(SubscriptionsStore.matchTopics("finance/stock/ibm", "finance/#"));
     }
 
-
-    @Test
-    public void testMatchTopics_single() {
+	@Test
+	public void testMatchTopics_single() {
         assertTrue(SubscriptionsStore.matchTopics("finance", "+"));
         assertTrue(SubscriptionsStore.matchTopics("finance/stock", "finance/+"));
         assertFalse(SubscriptionsStore.matchTopics("finance", "finance/+"));
@@ -305,18 +314,18 @@ public class SubscriptionsStoreTest {
         assertTrue(SubscriptionsStore.matchTopics("foo/bar/baz", "foo/+/baz"));
         assertTrue(SubscriptionsStore.matchTopics("foo/bar/baz", "foo/+/#"));
         assertTrue(SubscriptionsStore.matchTopics("foo/bar/baz", "#"));
-        
-        assertFalse(SubscriptionsStore.matchTopics("foo", "foo/bar"));
-        assertFalse(SubscriptionsStore.matchTopics("foo/bar/baz", "foo/+"));
+
+	    assertFalse(SubscriptionsStore.matchTopics("foo", "foo/bar"));
+	    assertFalse(SubscriptionsStore.matchTopics("foo/bar/baz", "foo/+"));
         assertFalse(SubscriptionsStore.matchTopics("foo/bar/bar", "foo/+/baz"));
         assertFalse(SubscriptionsStore.matchTopics("fo2/bar/baz", "foo/+/#"));
-        
-        assertTrue(SubscriptionsStore.matchTopics("/foo/bar", "#"));
-        assertTrue(SubscriptionsStore.matchTopics("/foo/bar", "/#"));
+
+	    assertTrue(SubscriptionsStore.matchTopics("/foo/bar", "#"));
+	    assertTrue(SubscriptionsStore.matchTopics("/foo/bar", "/#"));
         assertFalse(SubscriptionsStore.matchTopics("foo/bar", "/#"));
-        
-        assertTrue(SubscriptionsStore.matchTopics("foo//bar", "foo//bar"));
-        assertTrue(SubscriptionsStore.matchTopics("foo//bar", "foo//+"));
+
+	    assertTrue(SubscriptionsStore.matchTopics("foo//bar", "foo//bar"));
+	    assertTrue(SubscriptionsStore.matchTopics("foo//bar", "foo//+"));
         assertTrue(SubscriptionsStore.matchTopics("foo///baz", "foo/+/+/baz"));
         assertTrue(SubscriptionsStore.matchTopics("foo/bar/", "foo/bar/+"));
     }
@@ -329,45 +338,31 @@ public class SubscriptionsStoreTest {
         Subscription slashSub = new Subscription("FAKE_CLI_ID_1", "/topic", AbstractMessage.QOSType.MOST_ONE, false);
         aStore.add(slashSub);
         aStore.deactivate(slashSub.getClientId());
-        
-        //subscribe an active clientID2 to /topic
-        Subscription slashSub2 = new Subscription("FAKE_CLI_ID_2", "/topic", AbstractMessage.QOSType.MOST_ONE, false);
+
+	    //subscribe an active clientID2 to /topic
+	    Subscription slashSub2 = new Subscription("FAKE_CLI_ID_2", "/topic", AbstractMessage.QOSType.MOST_ONE, false);
         aStore.add(slashSub2);
-        
-        //Exercise
-        aStore.removeSubscription("/topic", slashSub2.getClientId());
-        
-        //Verify
-        Subscription remainedSubscription = aStore.matches("/topic").get(0);
+
+	    //Exercise
+	    aStore.removeSubscription("/topic", slashSub2.getClientId());
+
+	    //Verify
+	    Subscription remainedSubscription = aStore.matches("/topic").get(0);
         assertEquals(slashSub.getClientId(), remainedSubscription.getClientId());
     }
-    
-    @Test
-    public void overridingSubscriptions() {
+
+	@Test
+	public void overridingSubscriptions() {
         Subscription oldSubscription = new Subscription("FAKE_CLI_ID_1", "/topic", AbstractMessage.QOSType.MOST_ONE, false);
         store.add(oldSubscription);
         Subscription overrindingSubscription = new Subscription("FAKE_CLI_ID_1", "/topic", AbstractMessage.QOSType.EXACTLY_ONCE, false);
         store.add(overrindingSubscription);
-        
-        //Verify
-        List<Subscription> subscriptions = store.matches("/topic");
+
+		//Verify
+		List<Subscription> subscriptions = store.matches("/topic");
         assertEquals(1, subscriptions.size());
         Subscription sub = subscriptions.get(0);
         assertEquals(overrindingSubscription.getRequestedQos(), sub.getRequestedQos());
-    }
-
-    private static Token[] asArray(Object... l) {
-        Token[] tokens = new Token[l.length];
-        for (int i = 0; i < l.length; i++) {
-            Object o = l[i];
-            if (o instanceof Token) {
-                tokens[i] = (Token) o;
-            } else {
-                tokens[i] = new Token(o.toString());
-            }
-        }
-
-        return tokens;
     }
 
     private void assertEqualsSeq(Token[] exptected, List<Token> result) {

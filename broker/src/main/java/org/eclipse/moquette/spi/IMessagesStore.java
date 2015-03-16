@@ -17,40 +17,16 @@ package org.eclipse.moquette.spi;
 
 import java.io.Serializable;
 import java.nio.ByteBuffer;
-import org.eclipse.moquette.spi.impl.events.PublishEvent;
-import org.eclipse.moquette.proto.messages.AbstractMessage;
-
 import java.util.Collection;
 import java.util.List;
+
+import org.eclipse.moquette.proto.messages.AbstractMessage;
+import org.eclipse.moquette.spi.impl.events.PublishEvent;
 
 /**
  * Defines the SPI to be implemented by a StorageService that handle persistence of messages
  */
 public interface IMessagesStore {
-
-    public static class StoredMessage implements Serializable {
-        final AbstractMessage.QOSType m_qos;
-        final byte[] m_payload;
-        final String m_topic;
-
-        public StoredMessage(byte[] message, AbstractMessage.QOSType qos, String topic) {
-            m_qos = qos;
-            m_payload = message;
-            m_topic = topic;
-        }
-
-        public AbstractMessage.QOSType getQos() {
-            return m_qos;
-        }
-
-        public ByteBuffer getPayload() {
-            return (ByteBuffer) ByteBuffer.allocate(m_payload.length).put(m_payload).flip();
-        }
-
-        public String getTopic() {
-            return m_topic;
-        }
-    }
 
     /**
      * Used to initialize all persistent store structures
@@ -58,7 +34,7 @@ public interface IMessagesStore {
     void initStore();
 
     /**
-     * Persist the message. 
+     * Persist the message.
      * If the message is empty then the topic is cleaned, else it's stored.
      */
     void storeRetained(String topic, ByteBuffer message, AbstractMessage.QOSType qos);
@@ -72,23 +48,23 @@ public interface IMessagesStore {
 
     /**
      * Return the list of persisted publishes for the given clientID.
-     * For QoS1 and QoS2 with clean session flag, this method return the list of 
+     * For QoS1 and QoS2 with clean session flag, this method return the list of
      * missed publish events while the client was disconnected.
      */
     List<PublishEvent> listMessagesInSession(String clientID);
-    
-    void removeMessageInSession(String clientID, int packetID);
 
-    void dropMessagesInSession(String clientID);
+	void removeMessageInSession(String clientID, int packetID);
 
-    void cleanInFlight(String clientID, int packetID);
+	void dropMessagesInSession(String clientID);
 
-    void addInFlight(PublishEvent evt, String clientID, int packetID);
+	void cleanInFlight(String clientID, int packetID);
 
-    /**
-     * Return the next valid packetIdentifer for the given client session.
-     * */
-    int nextPacketID(String clientID);
+	void addInFlight(PublishEvent evt, String clientID, int packetID);
+
+	/**
+	 * Return the next valid packetIdentifer for the given client session.
+	 */
+	int nextPacketID(String clientID);
 
     void close();
 
@@ -99,4 +75,28 @@ public interface IMessagesStore {
     PublishEvent retrieveQoS2Message(String publishKey);
 
     void cleanRetained(String topic);
+
+	public static class StoredMessage implements Serializable {
+		final AbstractMessage.QOSType m_qos;
+		final byte[] m_payload;
+		final String m_topic;
+
+		public StoredMessage(byte[] message, AbstractMessage.QOSType qos, String topic) {
+			m_qos = qos;
+			m_payload = message;
+			m_topic = topic;
+		}
+
+		public AbstractMessage.QOSType getQos() {
+			return m_qos;
+		}
+
+		public ByteBuffer getPayload() {
+			return (ByteBuffer) ByteBuffer.allocate(m_payload.length).put(m_payload).flip();
+		}
+
+		public String getTopic() {
+			return m_topic;
+		}
+	}
 }

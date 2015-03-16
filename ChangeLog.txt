@@ -1,5 +1,4 @@
 Version 0.7:
-	Add topic--->broker route
     Fix issue #38, added aligned to MQTT 3.1.1
     Refactored big event switch to @Annotation dispatcher
     Switched from HawtDB to MapDB
@@ -9,6 +8,7 @@ Version 0.7:
     Added packetIdentifier storage and generation
     Fixed issue #16, bad packetId for will messages with qos > 0
     Added store path variable "persistent_store" to configuration file (picked from Steven Warwick fork)
+    Add topic--->broker route
 
 Version 0.6:
     Fix issue #42, bad password file path composition

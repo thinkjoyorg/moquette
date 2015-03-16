@@ -15,14 +15,15 @@
  */
 package org.eclipse.moquette.parser.netty;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
 import io.netty.handler.codec.CorruptedFrameException;
 import io.netty.util.AttributeKey;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import org.eclipse.moquette.proto.messages.AbstractMessage;
 
 /**
@@ -33,11 +34,11 @@ public class MQTTDecoder extends ByteToMessageDecoder {
     
     //3 = 3.1, 4 = 3.1.1
     static final AttributeKey<Integer> PROTOCOL_VERSION = AttributeKey.valueOf("version");
-    
-    private final Map<Byte, DemuxDecoder> m_decoderMap = new HashMap<>();
-    
-    public MQTTDecoder() {
-       m_decoderMap.put(AbstractMessage.CONNECT, new ConnectDecoder());
+
+	private final Map<Byte, DemuxDecoder> m_decoderMap = new HashMap<>();
+
+	public MQTTDecoder() {
+		m_decoderMap.put(AbstractMessage.CONNECT, new ConnectDecoder());
        m_decoderMap.put(AbstractMessage.CONNACK, new ConnAckDecoder());
        m_decoderMap.put(AbstractMessage.PUBLISH, new PublishDecoder());
        m_decoderMap.put(AbstractMessage.PUBACK, new PubAckDecoder());

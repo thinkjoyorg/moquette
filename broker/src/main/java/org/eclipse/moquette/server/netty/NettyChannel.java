@@ -21,33 +21,34 @@ import io.netty.util.Attribute;
 import io.netty.util.AttributeKey;
 import org.eclipse.moquette.server.Constants;
 import org.eclipse.moquette.server.ServerChannel;
+import org.eclipse.moquette.server.cluster.Node;
 
 /**
  *
  * @author andrea
  */
 public class NettyChannel implements ServerChannel {
-    
-    private ChannelHandlerContext m_channel;
-    
 
-    public static final AttributeKey<Object> ATTR_KEY_KEEPALIVE = AttributeKey.valueOf(Constants.KEEP_ALIVE);
-    public static final AttributeKey<Object> ATTR_KEY_CLEANSESSION = AttributeKey.valueOf(Constants.CLEAN_SESSION);
-    public static final AttributeKey<Object> ATTR_KEY_CLIENTID = AttributeKey.valueOf(Constants.ATTR_CLIENTID);
+	public static final AttributeKey<Object> ATTR_KEY_KEEPALIVE = AttributeKey.valueOf(Constants.KEEP_ALIVE);
+	public static final AttributeKey<Object> ATTR_KEY_CLEANSESSION = AttributeKey.valueOf(Constants.CLEAN_SESSION);
+	public static final AttributeKey<Object> ATTR_KEY_CLIENTID = AttributeKey.valueOf(Constants.ATTR_CLIENTID);
+	private ChannelHandlerContext m_channel;
+	private Node brokerNode;
 
-    NettyChannel(ChannelHandlerContext ctx) {
-        m_channel = ctx;
-    }
+	NettyChannel(ChannelHandlerContext ctx, Node node) {
+		brokerNode = node;
+		m_channel = ctx;
+	}
 
-    public Object getAttribute(AttributeKey<Object> key) {
-        Attribute<Object> attr = m_channel.attr(key);
-        return attr.get();
-    }
+	public Object getAttribute(AttributeKey<Object> key) {
+		Attribute<Object> attr = m_channel.attr(key);
+		return attr.get();
+	}
 
-    public void setAttribute(AttributeKey<Object> key, Object value) {
-        Attribute<Object> attr = m_channel.attr(key);
-        attr.set(value);
-    }
+	public void setAttribute(AttributeKey<Object> key, Object value) {
+		Attribute<Object> attr = m_channel.attr(key);
+		attr.set(value);
+	}
     
     public void setIdleTime(int idleTime) {
         if (m_channel.pipeline().names().contains("idleStateHandler")) {
@@ -68,9 +69,14 @@ public class NettyChannel implements ServerChannel {
         m_channel.writeAndFlush(value);
     }
 
-    @Override
-    public String toString() {
-        String clientID = (String) getAttribute(ATTR_KEY_CLIENTID);
-        return "session [clientID: "+ clientID +"]" + super.toString();
-    }
+	@Override
+	public Node getBrokerNode() {
+		return this.brokerNode;
+	}
+
+	@Override
+	public String toString() {
+		String clientID = (String) getAttribute(ATTR_KEY_CLIENTID);
+		return "session [clientID: " + clientID + "]" + super.toString();
+	}
 }
