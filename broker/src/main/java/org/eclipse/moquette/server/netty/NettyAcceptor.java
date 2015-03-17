@@ -102,7 +102,7 @@ public class NettyAcceptor implements ServerAcceptor {
 	    final NettyMQTTHandler handler = new NettyMQTTHandler();
 	    String host = props.getProperty(Constants.HOST_PROPERTY_NAME);
 	    int port = Integer.parseInt(props.getProperty(Constants.PORT_PROPERTY_NAME));
-	    int nodeId = Integer.parseInt(props.getProperty("id"));
+	    int nodeId = Integer.parseInt(props.getProperty(Constants.NODEID_PROPERTY_NAME));
 	    handler.setBrokerNode(new Node(nodeId, host, port));
 	    handler.setMessaging(messaging);
 	    initFactory(host, port, new PipelineInitializer() {
@@ -129,9 +129,11 @@ public class NettyAcceptor implements ServerAcceptor {
         int port = Integer.parseInt(webSocketPortProp);
 
 	    final NettyMQTTHandler handler = new NettyMQTTHandler();
+	    int nodeId = Integer.parseInt(props.getProperty(Constants.NODEID_PROPERTY_NAME));
+	    String host = props.getProperty(Constants.HOST_PROPERTY_NAME);
+	    handler.setBrokerNode(new Node(nodeId, host, port));
 	    handler.setMessaging(messaging);
 
-	    String host = props.getProperty(Constants.HOST_PROPERTY_NAME);
 	    initFactory(host, port, new PipelineInitializer() {
 		    @Override
 		    void init(ChannelPipeline pipeline) {
@@ -185,7 +187,9 @@ public class NettyAcceptor implements ServerAcceptor {
 		String host = props.getProperty(Constants.HOST_PROPERTY_NAME);
 
         final NettyMQTTHandler handler = new NettyMQTTHandler();
-        handler.setMessaging(messaging);
+		int nodeId = Integer.parseInt(props.getProperty(Constants.NODEID_PROPERTY_NAME));
+		handler.setBrokerNode(new Node(nodeId, host, sslPort));
+		handler.setMessaging(messaging);
         initFactory(host, sslPort, new PipelineInitializer() {
             @Override
             void init(ChannelPipeline pipeline) throws Exception {
