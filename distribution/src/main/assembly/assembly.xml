@@ -36,7 +36,12 @@
             <source>src/main/resources/password_file.conf</source>
             <outputDirectory>config/</outputDirectory>
         </file>
-        
+        <file>
+            <source>src/main/resources/redis.properties</source>
+            <outputDirectory>config/</outputDirectory>
+        </file>
+
+
         <file>
             <source>src/main/resources/README.txt</source>
         </file>

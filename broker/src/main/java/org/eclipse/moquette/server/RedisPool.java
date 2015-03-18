@@ -24,13 +24,13 @@ public class RedisPool {
 
 	static {
 		InputStream inputStream = null;
+		String configPath = System.getProperty("moquette.path", null);
 		Properties prop = new Properties();
 		try {
-			inputStream = new FileInputStream(new File("config/redis.properties"));
+			inputStream = new FileInputStream(new File(configPath, "config/redis.properties"));
 			prop.load(inputStream);
 		} catch (IOException e) {
-			log.error("init reids pool fail...");
-			System.exit(0);
+			log.error(e.getMessage());
 		} finally {
 			if (null != inputStream) {
 				try {

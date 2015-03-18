@@ -25,7 +25,7 @@ public class Constants {
 	public static final int WEBSOCKET_PORT = 8080;
 	public static final String HOST = "0.0.0.0";
 	public static final int NODEID = 1;
-	public static final int DEFAULT_CONNECT_TIMEOUT = 10;
+	public static final int DEFAULT_CONNECT_TIMEOUT = 60;
 	public static final String DEFAULT_MOQUETTE_STORE_MAP_DB_FILENAME = "moquette_store.mapdb";
 	public static final String DEFAULT_PERSISTENT_PATH = System.getProperty("user.home") + File.separator + DEFAULT_MOQUETTE_STORE_MAP_DB_FILENAME;
 	public static final String PERSISTENT_STORE_PROPERTY_NAME = "persistent_store";
