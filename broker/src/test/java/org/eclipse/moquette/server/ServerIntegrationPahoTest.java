@@ -405,4 +405,25 @@ public class ServerIntegrationPahoTest {
         assertEquals("Hello MQTT 2", message.toString());
     }
 
+	@Test
+	public void testOnlineState() throws Exception {
+//		LOG.info("*** testOnlineState ***");
+//		MqttConnectOptions options = new MqttConnectOptions();
+//		options.setCleanSession(true);
+//		String clientId = ClientIds.generateClientId("zhiliao", "gbdai", PlatformType.Android());
+//		MqttClient client = new MqttClient("tcp://localhost:1883", clientId);
+//		client.connect(options);
+//		String accountArea = ClientIds.getAccountArea(clientId);
+//		String account = ClientIds.getAccount(clientId);
+//		String key = accountArea.concat(account);
+//
+//		assertTrue(jedis.sismember(key, clientId));
+//
+//		client.disconnect();
+//		Set<String> smembers = jedis.smembers(key);
+//		if(smembers.size() > 0){
+//			assertFalse(jedis.sismember(key,clientId));
+//		}
+	}
+
 }

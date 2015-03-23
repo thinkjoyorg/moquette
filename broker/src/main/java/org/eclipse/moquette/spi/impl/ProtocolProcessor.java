@@ -27,7 +27,6 @@ import org.eclipse.moquette.proto.messages.*;
 import org.eclipse.moquette.proto.messages.AbstractMessage.QOSType;
 import org.eclipse.moquette.server.ConnectionDescriptor;
 import org.eclipse.moquette.server.IAuthenticator;
-import org.eclipse.moquette.server.RedisPool;
 import org.eclipse.moquette.server.ServerChannel;
 import org.eclipse.moquette.server.netty.NettyChannel;
 import org.eclipse.moquette.spi.IMatchingCondition;
@@ -36,9 +35,10 @@ import org.eclipse.moquette.spi.ISessionsStore;
 import org.eclipse.moquette.spi.impl.events.*;
 import org.eclipse.moquette.spi.impl.subscriptions.Subscription;
 import org.eclipse.moquette.spi.impl.subscriptions.SubscriptionsStore;
+import org.eclipse.moquette.spi.impl.thinkjoy.OnlineStateManager;
+import org.eclipse.moquette.spi.impl.thinkjoy.TopicRouter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import redis.clients.jedis.Jedis;
 
 import static org.eclipse.moquette.parser.netty.Utils.VERSION_3_1;
 import static org.eclipse.moquette.parser.netty.Utils.VERSION_3_1_1;
@@ -173,6 +173,8 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
             //cleanup topic subscriptions
             cleanSession(msg.getClientID());
         }
+	    // put onlineState
+	    OnlineStateManager.put(msg.getClientID());
 
         ConnAckMessage okResp = new ConnAckMessage();
         okResp.setReturnCode(ConnAckMessage.CONNECTION_ACCEPTED);
@@ -469,7 +471,13 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 	    String clientID = (String) session.getAttribute(NettyChannel.ATTR_KEY_CLIENTID);
 	    boolean cleanSession = (Boolean) session.getAttribute(NettyChannel.ATTR_KEY_CLEANSESSION);
 
-	    cleanRouteByClientID(clientID);
+	    Set<Subscription> subscription = m_sessionsStore.getSubscriptionById(clientID);
+	    for (Subscription s : subscription) {
+		    TopicRouter.cleanRouteByTopic(s.getTopicFilter());
+	    }
+	    //clear onlineState
+	    OnlineStateManager.remove(clientID);
+
 	    if (cleanSession) {
 		    //cleanup topic subscriptions
 		    cleanSession(clientID);
@@ -524,7 +532,7 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
         for (String topic : topics) {
             subscriptions.removeSubscription(topic, clientID);
 
-	        cleanRouteByTopic(topic);
+	        TopicRouter.cleanRouteByTopic(topic);
         }
         //ack the client
         UnsubAckMessage ackMessage = new UnsubAckMessage();
@@ -545,7 +553,7 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
             Subscription newSubscription = new Subscription(clientID, req.getTopicFilter(), qos, cleanSession);
             subscribeSingleTopic(newSubscription, req.getTopicFilter());
 
-	        addRoute(req.getTopicFilter(), session.getBrokerNode().getNodeUri());
+	        TopicRouter.addRoute(req.getTopicFilter(), session.getBrokerNode().getNodeUri());
         }
 
         //ack the client
@@ -561,30 +569,6 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 	    LOG.debug("SUBACK for packetID {}", msg.getMessageID());
 	    session.write(ackMessage);
     }
-
-	//add topic ---> Node router to redis
-	private void addRoute(String topic, String nodeUri) {
-		Jedis jedis = RedisPool.getPool().getResource();
-		jedis.sadd(topic, nodeUri);
-		RedisPool.getPool().returnResource(jedis);
-	}
-
-	//remove all this client's route from redis
-	private void cleanRouteByClientID(String clientID) {
-		Set<Subscription> subscription = m_sessionsStore.getSubscriptionById(clientID);
-		for (Subscription s : subscription) {
-			Jedis jedis = RedisPool.getPool().getResource();
-			jedis.del(s.getTopicFilter());
-			RedisPool.getPool().returnResource(jedis);
-		}
-	}
-
-	//remove topic ---> node route from reids.
-	private void cleanRouteByTopic(String topic) {
-		Jedis jedis = RedisPool.getPool().getResource();
-		jedis.del(topic);
-		RedisPool.getPool().returnResource(jedis);
-	}
 
 	private void subscribeSingleTopic(Subscription newSubscription, final String topic) {
 		LOG.info("<{}> subscribed to topic <{}> with QoS {}",
