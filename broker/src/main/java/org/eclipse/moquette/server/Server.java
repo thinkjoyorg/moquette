@@ -18,6 +18,8 @@ package org.eclipse.moquette.server;
 import java.io.File;
 import java.io.IOException;
 import java.text.ParseException;
+import java.util.Enumeration;
+import java.util.Objects;
 import java.util.Properties;
 
 import org.eclipse.moquette.commons.Constants;
@@ -89,8 +91,13 @@ public class Server {
     public void startServer(Properties configProps) throws IOException {
 	    ConfigurationParser confParser = new ConfigurationParser(configProps);
 	    m_properties = confParser.getProperties();
+	    Properties mutiClientProp = PropertyParser.getProperties(new File(System.getProperty("moquette.path", null), "config/muti_client_allowable.properties"));
+
 	    LOG.info("Persistent store file: " + m_properties.get(Constants.PERSISTENT_STORE_PROPERTY_NAME));
+
 	    initNode(m_properties);
+	    initMutiClientAllowable(mutiClientProp);
+
 	    messaging = SimpleMessaging.getInstance();
 	    messaging.init(m_properties);
 
@@ -98,7 +105,13 @@ public class Server {
 	    m_acceptor.initialize(messaging, m_properties);
     }
 
+	/**
+	 * 初始化节点信息。用于集群模式
+	 *
+	 * @param configProps
+	 */
 	private void initNode(Properties configProps) {
+
 		System.out.println("init redis pool...");
 		Jedis jedis = null;
 		try {
@@ -115,6 +128,33 @@ public class Server {
 			RedisPool.getPool().returnResource(jedis);
 		}
 
+	}
+
+	/**
+	 * 初始化允许多终端登录的域账号
+	 *
+	 * @param configProps
+	 */
+	private void initMutiClientAllowable(Properties configProps) {
+		System.out.println("init muticlient allowable ...");
+		Jedis jedis = null;
+		try {
+			jedis = RedisPool.getPool().getResource();
+			Enumeration<?> areaAccounts = configProps.propertyNames();
+			while (areaAccounts.hasMoreElements()) {
+				String areaAccount = areaAccounts.nextElement().toString();
+				String v = configProps.get(areaAccount).toString();
+				//1表示允许多终端登录
+				if (Objects.equals("1", v)) {
+					jedis.sadd(Constants.KEY_MUTI_CLIENT_ALLOWABLE, areaAccount);
+				}
+			}
+		} catch (Exception ex) {
+			LOG.error("init muticlient allowable fail...");
+			throw new RuntimeException("init muticlient allowable fail...");
+		} finally {
+			RedisPool.getPool().returnResource(jedis);
+		}
 	}
 
 	public void stopServer() {

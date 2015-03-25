@@ -19,6 +19,10 @@ import redis.clients.jedis.Jedis;
 public final class TopicRouter {
 	private static final Logger LOG = LoggerFactory.getLogger(TopicRouter.class);
 
+	//empty constructor
+	private TopicRouter() {
+	}
+
 	//add topic ---> Node router to redis
 	public static final void addRoute(String topic, String nodeUri) {
 		Jedis jedis = null;

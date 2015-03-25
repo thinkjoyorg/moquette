@@ -23,6 +23,7 @@ import java.util.concurrent.Executors;
 import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.dsl.Disruptor;
+import org.eclipse.moquette.commons.Constants;
 import org.eclipse.moquette.proto.messages.*;
 import org.eclipse.moquette.proto.messages.AbstractMessage.QOSType;
 import org.eclipse.moquette.server.ConnectionDescriptor;
@@ -173,7 +174,15 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
             //cleanup topic subscriptions
             cleanSession(msg.getClientID());
         }
-	    // put onlineState
+
+	    //处理不允许多终端登录的场景。
+	    if (!OnlineStateManager.isAllowMutiClient(msg.getClientID())) {
+		    Set<String> members = OnlineStateManager.get(msg.getClientID());
+		    for (String clientID : members) {
+			    publishForConnectConflict(clientID);
+		    }
+	    }
+	    // put client online
 	    OnlineStateManager.put(msg.getClientID());
 
         ConnAckMessage okResp = new ConnAckMessage();
@@ -210,6 +219,17 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
             m_messagesStore.removeMessageInSession(clientID, pubEvt.getMessageID());
         }
     }
+
+	/**
+	 * publish to connect conflict message M_CONNECT_CONFLICT
+	 * 业务系统必须订阅自己的clientID的topic。
+	 */
+	private void publishForConnectConflict(String clientID) {
+		LOG.trace("publishForConnectConflict for client <{}>", clientID);
+		String topic = clientID;
+		ByteBuffer message = ByteBuffer.wrap(Constants.M_CONNECT_CONFLICT.getBytes());
+		processPublish(clientID, topic, QOSType.MOST_ONE, message, false, null);
+	}
 
     @MQTTMessage(message = PubAckMessage.class)
     void processPubAck(ServerChannel session, PubAckMessage msg) {

@@ -17,10 +17,14 @@ package org.eclipse.moquette.server;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 
+import cn.thinkjoy.im.common.ClientIds;
+import cn.thinkjoy.im.common.PlatformType;
 import org.eclipse.moquette.commons.Constants;
+import org.eclipse.moquette.spi.impl.thinkjoy.OnlineStateManager;
 import org.eclipse.paho.client.mqttv3.*;
 import org.eclipse.paho.client.mqttv3.persist.MqttDefaultFilePersistence;
 import org.junit.After;
@@ -63,11 +67,11 @@ public class ServerIntegrationPahoTest {
 	    assertFalse(String.format("The DB storagefile %s already exists", org.eclipse.moquette.commons.Constants.DEFAULT_MOQUETTE_STORE_MAP_DB_FILENAME), dbFile.exists());
 
 	    jedis = RedisPool.getPool().getResource();
-	    jedis.del(Constants.KEY_NODE_LIST);
-
 	    startServer();
 
-	    m_client = new MqttClient("tcp://localhost:1883", "TestClient", s_dataStore);
+	    String clientID = ClientIds.generateClientId("zhiliao", "gbdai", PlatformType.Android());
+
+	    m_client = new MqttClient("tcp://localhost:1883", clientID, s_dataStore);
 	    m_callback = new TestCallback();
 	    m_client.setCallback(m_callback);
     }
@@ -83,6 +87,7 @@ public class ServerIntegrationPahoTest {
 	    if (dbFile.exists()) {
 		    dbFile.delete();
         }
+	    jedis.flushAll();
 	    RedisPool.getPool().returnResource(jedis);
 
 	    assertFalse(dbFile.exists());
@@ -424,6 +429,45 @@ public class ServerIntegrationPahoTest {
 //		if(smembers.size() > 0){
 //			assertFalse(jedis.sismember(key,clientId));
 //		}
+	}
+
+	@Test
+	public void testOnlineStateManager() throws Exception {
+		String clientId1 = ClientIds.generateClientId("zhiliao", "gbdai", PlatformType.Android());
+		String clientId2 = ClientIds.generateClientId("zhiliao", "gbdai", PlatformType.Android());
+		String clientId3 = ClientIds.generateClientId("zhiliao", "gbdai", PlatformType.Android());
+		OnlineStateManager.put(clientId1);
+		OnlineStateManager.put(clientId2);
+		OnlineStateManager.put(clientId3);
+		assertTrue(OnlineStateManager.get(clientId1).size() == 3);
+
+		OnlineStateManager.remove(clientId1);
+		OnlineStateManager.remove(clientId2);
+		OnlineStateManager.remove(clientId3);
+		assertTrue(OnlineStateManager.get(clientId1).size() == 0);
+
+		String clientId4 = ClientIds.generateClientId("zhiliao", "xyzhang", PlatformType.Android());
+		String clientId5 = ClientIds.generateClientId("xiaoyuanyun", "gbdai", PlatformType.Android());
+
+		assertFalse(OnlineStateManager.isAllowMutiClient(clientId4));
+		assertTrue(OnlineStateManager.isAllowMutiClient(clientId5));
+		//OnlineStateManager.
+
+	}
+
+	@Test
+	public void testConnectConflict() throws Exception {
+		String anotherClientID = ClientIds.generateClientId("zhiliao", "gbdai", PlatformType.Android());
+		m_client.connect();
+		m_client.subscribe(m_client.getClientId());
+		String tmpDir = System.getProperty("java.io.tmpdir");
+		MqttClientPersistence anotherStore = new MqttDefaultFilePersistence(tmpDir + File.separator + "anotherClient");
+		MqttClient anotherClient = new MqttClient("tcp://localhost:1883", anotherClientID, anotherStore);
+
+		anotherClient.connect();
+		anotherClient.disconnect();
+
+		assertTrue(Objects.equals(Constants.M_CONNECT_CONFLICT, m_callback.getMessage(true).toString()));
 	}
 
 }
