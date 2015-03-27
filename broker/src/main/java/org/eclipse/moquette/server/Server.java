@@ -24,6 +24,7 @@ import java.util.Properties;
 
 import org.eclipse.moquette.commons.Constants;
 import org.eclipse.moquette.server.cluster.Node;
+import org.eclipse.moquette.server.jdbc.DB;
 import org.eclipse.moquette.server.netty.NettyAcceptor;
 import org.eclipse.moquette.spi.impl.SimpleMessaging;
 import org.slf4j.Logger;
@@ -91,12 +92,12 @@ public class Server {
     public void startServer(Properties configProps) throws IOException {
 	    ConfigurationParser confParser = new ConfigurationParser(configProps);
 	    m_properties = confParser.getProperties();
-	    Properties mutiClientProp = PropertyParser.getProperties(new File(System.getProperty("moquette.path", null), "config/muti_client_allowable.properties"));
+	    Properties jdbcProp = PropertyParser.getProperties(new File(System.getProperty("moquette.path", null), "config/jdbc.properties"));
 
 	    LOG.info("Persistent store file: " + m_properties.get(Constants.PERSISTENT_STORE_PROPERTY_NAME));
 
 	    initNode(m_properties);
-	    initMutiClientAllowable(mutiClientProp);
+	    initDB(jdbcProp);
 
 	    messaging = SimpleMessaging.getInstance();
 	    messaging.init(m_properties);
@@ -104,6 +105,13 @@ public class Server {
 	    m_acceptor = new NettyAcceptor();
 	    m_acceptor.initialize(messaging, m_properties);
     }
+
+	//初始化域账号和该域下是否允许多终端登录。
+	private void initDB(Properties jdbcProp) {
+		DB db = new DB(jdbcProp);
+		db.initAreaToRedis();
+		db.initMutiClientAllowableToRedis();
+	}
 
 	/**
 	 * 初始化节点信息。用于集群模式
@@ -156,7 +164,6 @@ public class Server {
 			RedisPool.getPool().returnResource(jedis);
 		}
 	}
-
 	public void stopServer() {
 		LOG.info("Server stopping...");
 		messaging.stop();

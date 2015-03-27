@@ -114,6 +114,25 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
             return;
         }
 
+	    //处理不允许多终端登录的场景的策略。1:kick,2:prevent
+	    //如果该域下同一个账号多终端登录的策略是kick得话
+	    int mutiClientAllowable = OnlineStateManager.getMutiClientAllowable(msg.getClientID());
+	    if (1 == mutiClientAllowable) {
+		    Set<String> members = OnlineStateManager.get(msg.getClientID());
+		    for (String clientID : members) {
+			    publishForConnectConflict(clientID);
+		    }
+	    } else if (2 == mutiClientAllowable) {
+		    //如果该域下同一个账号多终端登录的策略是prevent
+		    ConnAckMessage okResp = new ConnAckMessage();
+		    okResp.setReturnCode(ConnAckMessage.SERVER_UNAVAILABLE);
+		    session.write(okResp);
+		    return;
+	    }
+
+	    // put client online
+	    OnlineStateManager.put(msg.getClientID());
+
         //if an old client with the same ID already exists close its session.
         if (m_clientIDs.containsKey(msg.getClientID())) {
             LOG.info("Found an existing connection with same client ID <{}>, forcing to close", msg.getClientID());
@@ -174,16 +193,6 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
             //cleanup topic subscriptions
             cleanSession(msg.getClientID());
         }
-
-	    //处理不允许多终端登录的场景。
-	    if (!OnlineStateManager.isAllowMutiClient(msg.getClientID())) {
-		    Set<String> members = OnlineStateManager.get(msg.getClientID());
-		    for (String clientID : members) {
-			    publishForConnectConflict(clientID);
-		    }
-	    }
-	    // put client online
-	    OnlineStateManager.put(msg.getClientID());
 
         ConnAckMessage okResp = new ConnAckMessage();
         okResp.setReturnCode(ConnAckMessage.CONNECTION_ACCEPTED);

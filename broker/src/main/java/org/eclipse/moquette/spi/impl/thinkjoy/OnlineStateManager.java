@@ -1,9 +1,9 @@
 package org.eclipse.moquette.spi.impl.thinkjoy;
 
-import java.util.Objects;
 import java.util.Set;
 
 import cn.thinkjoy.im.common.ClientIds;
+import com.google.common.base.Optional;
 import com.google.common.collect.Sets;
 import org.eclipse.moquette.commons.Constants;
 import org.eclipse.moquette.proto.MQTTException;
@@ -109,23 +109,19 @@ public final class OnlineStateManager {
 		}
 	}
 
-	public static final boolean isAllowMutiClient(String clientID) {
+	//查询该clientID所属域账号下的多终端登录策略,kick or prevent
+	public static final int getMutiClientAllowable(String clientID) {
 		Jedis jedis = null;
 		try {
 			String accountArea = ClientIds.getAccountArea(clientID);
 			jedis = RedisPool.getPool().getResource();
-			Set<String> smembers = jedis.smembers(Constants.KEY_MUTI_CLIENT_ALLOWABLE);
-			for (String smember : smembers) {
-				if (Objects.equals(smember, accountArea)) {
-					return true;
-				}
-			}
+			Optional<String> kickOrPrevent = Optional.of(jedis.hget(Constants.KEY_MUTI_CLIENT_ALLOWABLE, accountArea));
+			return Integer.parseInt(kickOrPrevent.get());
 		} catch (Exception e) {
-			LOG.error(String.format("query [isOnline] %s fail.", clientID));
-			throw new MQTTException("query [isOnline] fail:" + clientID);
+			LOG.error(String.format("query [mutiClientAllowable] %s fail.", clientID));
+			throw new MQTTException("query [mutiClientAllowable] fail:" + clientID);
 		} finally {
 			RedisPool.getPool().returnResource(jedis);
 		}
-		return false;
 	}
 }

@@ -449,8 +449,8 @@ public class ServerIntegrationPahoTest {
 		String clientId4 = ClientIds.generateClientId("zhiliao", "xyzhang", PlatformType.Android());
 		String clientId5 = ClientIds.generateClientId("xiaoyuanyun", "gbdai", PlatformType.Android());
 
-		assertFalse(OnlineStateManager.isAllowMutiClient(clientId4));
-		assertTrue(OnlineStateManager.isAllowMutiClient(clientId5));
+		assertTrue(1 == OnlineStateManager.getMutiClientAllowable(clientId4));
+		assertTrue(2 == OnlineStateManager.getMutiClientAllowable(clientId5));
 		//OnlineStateManager.
 
 	}

@@ -19,7 +19,7 @@ import org.slf4j.LoggerFactory;
  */
 
 public final class PropertyParser {
-	private static final Logger LOG = LoggerFactory.getLogger(RedisPool.class);
+	private static final Logger LOG = LoggerFactory.getLogger(PropertyParser.class);
 
 	//empty constructor
 	private PropertyParser() {

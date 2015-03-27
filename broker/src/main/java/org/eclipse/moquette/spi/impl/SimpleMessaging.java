@@ -36,6 +36,7 @@ import org.eclipse.moquette.spi.impl.events.MessagingEvent;
 import org.eclipse.moquette.spi.impl.events.ProtocolEvent;
 import org.eclipse.moquette.spi.impl.events.StopEvent;
 import org.eclipse.moquette.spi.impl.subscriptions.SubscriptionsStore;
+import org.eclipse.moquette.spi.impl.thinkjoy.AreaAuthenticator;
 import org.eclipse.moquette.spi.persistence.MapDBPersistentStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -177,16 +178,17 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
         //subscriptions.init(storedSubscriptions);
         subscriptions.init(m_sessionsStore);
 
-	    String passwdPath = props.getProperty(org.eclipse.moquette.commons.Constants.PASSWORD_FILE_PROPERTY_NAME, "");
-	    String configPath = System.getProperty("moquette.path", null);
-	    IAuthenticator authenticator;
-        if (passwdPath.isEmpty()) {
-            authenticator = new AcceptAllAuthenticator();
-        } else {
-            authenticator = new FileAuthenticator(configPath, passwdPath);
-        }
-        
-        m_processor.init(subscriptions, m_storageService, m_sessionsStore, authenticator);
+//	    String passwdPath = props.getProperty(org.eclipse.moquette.commons.Constants.PASSWORD_FILE_PROPERTY_NAME, "");
+//	    String configPath = System.getProperty("moquette.path", null);
+//	    IAuthenticator authenticator;
+//        if (passwdPath.isEmpty()) {
+//            authenticator = new AcceptAllAuthenticator();
+//        } else {
+//            authenticator = new FileAuthenticator(configPath, passwdPath);
+//        }
+	    IAuthenticator authenticator = new AreaAuthenticator();
+
+	    m_processor.init(subscriptions, m_storageService, m_sessionsStore, authenticator);
     }
 
 
