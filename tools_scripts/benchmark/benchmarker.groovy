@@ -1,18 +1,27 @@
-//@GrabResolver(name='Paho', root='https://repo.eclipse.org/content/repositories/paho-snapshots/')
-//@Grab(group='org.eclipse.paho', module='org.eclipse.paho.client.mqttv3', version='1.0.1-SNAPSHOT')
-@GrabResolver(name='Paho', root='https://repo.eclipse.org/content/repositories/paho-releases/')
-@Grab(group='org.eclipse.paho', module='mqtt-client', version='0.4.0')
+import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken
+@GrabResolver(name = 'Paho', root = 'https://repo.eclipse.org/content/repositories/paho-snapshots/')
+@Grab(group = 'org.eclipse.paho', module = 'org.eclipse.paho.client.mqttv3', version = '1.0.1')
+import org.eclipse.paho.client.mqttv3.MqttAsyncClient
+@GrabResolver(name = 'Paho', root = 'https://repo.eclipse.org/content/repositories/paho-snapshots/')
+@Grab(group = 'org.eclipse.paho', module = 'org.eclipse.paho.client.mqttv3', version = '1.0.1')
+import org.eclipse.paho.client.mqttv3.MqttAsyncClient
+@GrabResolver(name = 'Paho', root = 'https://repo.eclipse.org/content/repositories/paho-snapshots/')
+@Grab(group = 'org.eclipse.paho', module = 'org.eclipse.paho.client.mqttv3', version = '1.0.1')
+import org.eclipse.paho.client.mqttv3.MqttAsyncClient
+@GrabResolver(name = 'Paho', root = 'https://repo.eclipse.org/content/repositories/paho-snapshots/')
+@Grab(group = 'org.eclipse.paho', module = 'org.eclipse.paho.client.mqttv3', version = '1.0.1')
+//@GrabResolver(name='Paho', root='https://repo.eclipse.org/content/repositories/paho-releases/')
+//@Grab(group='org.eclipse.paho', module='mqtt-client', version='0.4.0')
 
 import org.eclipse.paho.client.mqttv3.MqttAsyncClient
-import org.eclipse.paho.client.mqttv3.MqttMessage
-import org.eclipse.paho.client.mqttv3.MqttException
 import org.eclipse.paho.client.mqttv3.MqttCallback
-import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken
+import org.eclipse.paho.client.mqttv3.MqttMessage
 import org.eclipse.paho.client.mqttv3.persist.MqttDefaultFilePersistence
-import java.util.concurrent.CountDownLatch
-import static groovy.json.JsonOutput.*
-import java.nio.ByteBuffer
 
+import java.nio.ByteBuffer
+import java.util.concurrent.CountDownLatch
+
+import static groovy.json.JsonOutput.*
 
 class SubscriberCallback implements MqttCallback {
 
@@ -91,7 +100,7 @@ String tmpDir = System.getProperty("java.io.tmpdir")
 MqttDefaultFilePersistence dataStore = new MqttDefaultFilePersistence(tmpDir)
 
 int rnd = (Math.random() * 100) as int
-MqttAsyncClient client = new MqttAsyncClient("tcp://${host}:1883", "SubscriberClient${rnd}", dataStore)
+MqttAsyncClient client = new MqttAsyncClient("tcp://${host}:1883", "zhiliao=xyzhang=Android=1427702425177${rnd}", dataStore)
 def callback = new SubscriberCallback()
 client.callback = callback
 client.connect().waitForCompletion(1000);

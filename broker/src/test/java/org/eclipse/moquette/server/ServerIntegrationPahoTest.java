@@ -27,10 +27,8 @@ import org.eclipse.moquette.commons.Constants;
 import org.eclipse.moquette.spi.impl.thinkjoy.OnlineStateManager;
 import org.eclipse.paho.client.mqttv3.*;
 import org.eclipse.paho.client.mqttv3.persist.MqttDefaultFilePersistence;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.*;
+import org.junit.rules.ExpectedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
@@ -43,10 +41,11 @@ public class ServerIntegrationPahoTest {
 
     static MqttClientPersistence s_dataStore;
     static MqttClientPersistence s_pubDataStore;
-    
-    Server m_server;
-    IMqttClient m_client;
-    TestCallback m_callback;
+	@Rule
+	public ExpectedException thrown = ExpectedException.none();
+	Server m_server;
+	IMqttClient m_client;
+	TestCallback m_callback;
 	Jedis jedis;
 
 	@BeforeClass
@@ -147,9 +146,9 @@ public class ServerIntegrationPahoTest {
         message.setRetained(false);
         m_client.publish("/topic", message);
 
-        assertEquals("/topic", m_callback.getTopic());
-    }
-    
+		assertEquals("/topic", m_callback.getTopic());
+		assertEquals("Hello world!!", m_callback.getMessage(false).toString());
+	}
 
     @Test
     public void testCleanSession_maintainClientSubscriptions() throws Exception {
@@ -169,7 +168,6 @@ public class ServerIntegrationPahoTest {
 
         assertEquals("/topic", m_callback.getTopic());
     }
-
 
     @Test
     public void testCleanSession_maintainClientSubscriptions_againstClientDestruction() throws Exception {
@@ -285,7 +283,7 @@ public class ServerIntegrationPahoTest {
     public void testPublishWithQoS1() throws Exception {
         LOG.info("*** testPublishWithQoS1 ***");
         m_client.connect();
-        m_client.subscribe("/topic", 1);
+	    m_client.subscribe("/topic/#", 1);
 	    m_client.publish("/topic", "Hello MQTT".getBytes(), 1, false);
 	    m_client.disconnect();
 
@@ -295,9 +293,9 @@ public class ServerIntegrationPahoTest {
 	    assertEquals(1, message.getQos());
     }
 
-    @Test
-    public void testPublishWithQoS1_notCleanSession() throws Exception {
-        LOG.info("*** testPublishWithQoS1_notCleanSession ***");
+	@Test
+	public void testPublishWithQoS1_notCleanSession() throws Exception {
+		LOG.info("*** testPublishWithQoS1_notCleanSession ***");
         MqttConnectOptions options = new MqttConnectOptions();
         options.setCleanSession(false);
         m_client.connect(options);
@@ -311,31 +309,31 @@ public class ServerIntegrationPahoTest {
 
         assertEquals("Hello MQTT", m_callback.getMessage(true).toString());
     }
-    
-    @Test
-    public void checkReceivePublishedMessage_after_a_reconnect_with_notCleanSession() throws Exception {
-        LOG.info("*** checkReceivePublishedMessage_after_a_reconnect_with_notCleanSession ***");
+
+	@Test
+	public void checkReceivePublishedMessage_after_a_reconnect_with_notCleanSession() throws Exception {
+		LOG.info("*** checkReceivePublishedMessage_after_a_reconnect_with_notCleanSession ***");
         MqttConnectOptions options = new MqttConnectOptions();
         options.setCleanSession(false);
         m_client.connect(options);
         m_client.subscribe("/topic", 1);
         m_client.disconnect();
-        
+
         m_client.connect(options);
         m_client.subscribe("/topic", 1);
-        
+
         //publish a QoS 1 message another client publish a message on the topic
-        publishFromAnotherClient("/topic", "Hello MQTT".getBytes(), 1); 
-        
+		publishFromAnotherClient("/topic", "Hello MQTT".getBytes(), 1);
+
         //Verify that after a reconnection the client receive the message
         MqttMessage message = m_callback.getMessage(true);
         assertNotNull(message);
         assertEquals("Hello MQTT", message.toString());
     }
- 
-    private void publishFromAnotherClient(String topic, byte[] payload, int qos) throws Exception {
-        IMqttClient anotherClient = new MqttClient("tcp://localhost:1883", "TestClientPUB", s_pubDataStore);
-        anotherClient.connect();
+
+	private void publishFromAnotherClient(String topic, byte[] payload, int qos) throws Exception {
+		IMqttClient anotherClient = new MqttClient("tcp://localhost:1883", "TestClientPUB", s_pubDataStore);
+		anotherClient.connect();
         anotherClient.publish(topic, payload, qos, false);
         anotherClient.disconnect();
     }
@@ -353,15 +351,15 @@ public class ServerIntegrationPahoTest {
         publishFromAnotherClient("/topic", "Hello MQTT".getBytes(), 2);
         m_callback.reinit();
         m_client.connect(options);
-        
-        MqttMessage message = m_callback.getMessage(true);
-        assertEquals("Hello MQTT", message.toString());
-        assertEquals(2, message.getQos());
+
+	    MqttMessage message = m_callback.getMessage(true);
+	    assertEquals("Hello MQTT", message.toString());
+	    assertEquals(2, message.getQos());
     }
 
-    @Test
-    public void testPublishReceiveWithQoS2() throws Exception {
-        LOG.info("*** testPublishReceiveWithQoS2 ***");
+	@Test
+	public void testPublishReceiveWithQoS2() throws Exception {
+		LOG.info("*** testPublishReceiveWithQoS2 ***");
         MqttConnectOptions options = new MqttConnectOptions();
         options.setCleanSession(false);
         m_client.connect(options);
@@ -372,38 +370,38 @@ public class ServerIntegrationPahoTest {
         publishFromAnotherClient("/topic", "Hello MQTT".getBytes(), 2);
         m_callback.reinit();
         m_client.connect(options);
-        
-        assertNotNull(m_callback);
-        MqttMessage message = m_callback.getMessage(true);
-        assertNotNull(message);
+
+		assertNotNull(m_callback);
+		MqttMessage message = m_callback.getMessage(true);
+		assertNotNull(message);
         assertEquals("Hello MQTT", message.toString());
     }
-    
-    @Test
-    public void avoidMultipleNotificationsAfterMultipleReconnection_cleanSessionFalseQoS1() throws Exception {
-        LOG.info("*** avoidMultipleNotificationsAfterMultipleReconnection_cleanSessionFalseQoS1, issue #16 ***");
+
+	@Test
+	public void avoidMultipleNotificationsAfterMultipleReconnection_cleanSessionFalseQoS1() throws Exception {
+		LOG.info("*** avoidMultipleNotificationsAfterMultipleReconnection_cleanSessionFalseQoS1, issue #16 ***");
         MqttConnectOptions options = new MqttConnectOptions();
         options.setCleanSession(false);
         m_client.connect(options);
         m_client.subscribe("/topic", 1);
         m_client.disconnect();
-        
-        publishFromAnotherClient("/topic", "Hello MQTT 1".getBytes(), 1);
-        m_callback.reinit();
-        m_client.connect(options);
-        
-        assertNotNull(m_callback);
-        MqttMessage message = m_callback.getMessage(true);
-        assertNotNull(message);
+
+		publishFromAnotherClient("/topic", "Hello MQTT 1".getBytes(), 1);
+		m_callback.reinit();
+		m_client.connect(options);
+
+		assertNotNull(m_callback);
+		MqttMessage message = m_callback.getMessage(true);
+		assertNotNull(message);
         assertEquals("Hello MQTT 1", message.toString());
         m_client.disconnect();
-        
-        //publish other message
-        publishFromAnotherClient("/topic", "Hello MQTT 2".getBytes(), 1);
-        
-        //reconnect the second time
-        m_callback.reinit();
-        m_client.connect(options);
+
+		//publish other message
+		publishFromAnotherClient("/topic", "Hello MQTT 2".getBytes(), 1);
+
+		//reconnect the second time
+		m_callback.reinit();
+		m_client.connect(options);
         assertNotNull(m_callback);
         message = m_callback.getMessage(true);
         assertNotNull(message);
@@ -470,4 +468,41 @@ public class ServerIntegrationPahoTest {
 		assertTrue(Objects.equals(Constants.M_CONNECT_CONFLICT, m_callback.getMessage(true).toString()));
 	}
 
+	@Test(expected = MqttException.class)
+	public void testConnectionPrevent() throws Exception {
+		String anotherClientID = ClientIds.generateClientId("xiaoyuanyun", "xyzhang", PlatformType.Android());
+		String aClientID = ClientIds.generateClientId("xiaoyuanyun", "xyzhang", PlatformType.Android());
+		String tmpDir = System.getProperty("java.io.tmpdir");
+		MqttClientPersistence anotherStore = new MqttDefaultFilePersistence(tmpDir + File.separator + "anotherClient");
+		MqttClientPersistence aStore = new MqttDefaultFilePersistence(tmpDir + File.separator + "anotherClient");
+		MqttClient anotherClient = new MqttClient("tcp://localhost:1883", anotherClientID, anotherStore);
+		MqttClient aClient = new MqttClient("tcp://localhost:1883", aClientID, aStore);
+		aClient.connect();
+		anotherClient.connect();
+		//	assertTrue(Objects.equals(Constants.M_CONNECT_CONFLICT, "1"));
+	}
+
+	@Test
+	public void testAreaAuthicatorSUCCESS() throws Exception {
+		String aClientID = ClientIds.generateClientId("xiaoyuanyun", "xyzhang", PlatformType.Android());
+		String tmpDir = System.getProperty("java.io.tmpdir");
+		MqttClientPersistence aStore = new MqttDefaultFilePersistence(tmpDir + File.separator + "anotherClient");
+		MqttClient aClient = new MqttClient("tcp://localhost:1883", aClientID, aStore);
+		MqttConnectOptions options = new MqttConnectOptions();
+		options.setUserName("xiaoyuanyun");
+		options.setPassword("111111".toCharArray());
+		aClient.connect(options);
+	}
+
+	@Test(expected = MqttException.class)
+	public void testAreaAuthicatorFail() throws Exception {
+		String aClientID = ClientIds.generateClientId("xiaoyuanyun", "xyzhang", PlatformType.Android());
+		String tmpDir = System.getProperty("java.io.tmpdir");
+		MqttClientPersistence aStore = new MqttDefaultFilePersistence(tmpDir + File.separator + "anotherClient");
+		MqttClient aClient = new MqttClient("tcp://localhost:1883", aClientID, aStore);
+		MqttConnectOptions options = new MqttConnectOptions();
+		options.setUserName("xiaoyuanyun1");
+		options.setPassword("111111".toCharArray());
+		aClient.connect(options);
+	}
 }

@@ -84,8 +84,8 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
         m_messagesStore = storageService;
         m_sessionsStore = sessionsStore;
 
-        //init the output ringbuffer
-        m_executor = Executors.newFixedThreadPool(1);
+	    //init the output ringbuffer
+	    m_executor = Executors.newFixedThreadPool(1);
 
 	    Disruptor<ValueEvent> disruptor = new Disruptor<>(ValueEvent.EVENT_FACTORY, 1024 * 32, m_executor);
 	    disruptor.handleEventsWith(this);
@@ -124,10 +124,14 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 		    }
 	    } else if (2 == mutiClientAllowable) {
 		    //如果该域下同一个账号多终端登录的策略是prevent
-		    ConnAckMessage okResp = new ConnAckMessage();
-		    okResp.setReturnCode(ConnAckMessage.SERVER_UNAVAILABLE);
-		    session.write(okResp);
-		    return;
+		    Set<String> members = OnlineStateManager.get(msg.getClientID());
+		    if (members.size() > 0) {
+			    ConnAckMessage okResp = new ConnAckMessage();
+			    okResp.setReturnCode(ConnAckMessage.SERVER_UNAVAILABLE);
+			    session.write(okResp);
+			    session.close(false);
+			    return;
+		    }
 	    }
 
 	    // put client online
