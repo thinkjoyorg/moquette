@@ -49,7 +49,7 @@ public class MapDBPersistentStore implements IMessagesStore, ISessionsStore {
 	//maps clientID to the list of pending messages stored
 	private ConcurrentMap<String, List<StoredPublishEvent>> m_persistentMessageStore;
 	//bind clientID+MsgID -> evt message published
-    private ConcurrentMap<String, StoredPublishEvent> m_inflightStore;
+	private ConcurrentMap<String, StoredPublishEvent> m_inflightStore;
     //bind clientID+MsgID -> evt message published
     private ConcurrentMap<String, StoredPublishEvent> m_qos2Store;
     //persistent Map of clientID, set of Subscriptions

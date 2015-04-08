@@ -66,7 +66,7 @@ public class ServerLowlevelMessagesIntegrationTests {
 	public void tearDown() throws Exception {
 		m_client.close();
 		LOG.debug("After raw client close");
-        Thread.sleep(300); //to let the close event pass before server stop event
+		Thread.sleep(300); //to let the close event pass before server stop event
         m_server.stopServer();
         LOG.debug("After asked server to stop");
 		File dbFile = new File(m_server.getProperties().getProperty(PERSISTENT_STORE_PROPERTY_NAME));
@@ -74,15 +74,15 @@ public class ServerLowlevelMessagesIntegrationTests {
 			dbFile.delete();
 		}
 	}
-    
-    @Test
+
+	@Test
     public void elapseKeepAliveTime() throws InterruptedException {
         int keepAlive = 2; //secs
         ConnectMessage connectMessage = new ConnectMessage();
 	    connectMessage.setProcotolVersion((byte) 3);
 	    connectMessage.setClientID("FAKECLNT");
 	    connectMessage.setKeepAlive(keepAlive);
-        m_client.sendMessage(connectMessage);
+		m_client.sendMessage(connectMessage);
 
 	    //wait 2 times the keepAlive
 	    Thread.sleep(keepAlive * 2 * 1000);
@@ -105,7 +105,7 @@ public class ServerLowlevelMessagesIntegrationTests {
 	    ConnectMessage connectMessage = new ConnectMessage();
 	    connectMessage.setProcotolVersion((byte) 3);
 	    connectMessage.setClientID("FAKECLNT");
-        connectMessage.setKeepAlive(keepAlive);
+	    connectMessage.setKeepAlive(keepAlive);
         connectMessage.setWillFlag(true);
         connectMessage.setWillMessage(willTestamentMsg);
         connectMessage.setWillTopic(willTestamentTopic);
