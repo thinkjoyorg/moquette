@@ -209,7 +209,7 @@ public class MapDBPersistentStore implements IMessagesStore, ISessionsStore {
 			this.m_inFlightIds.put(clientID, inFlightForClient);
 			return nextPacketId;
 		}
-		int maxId = Collections.max(inFlightForClient);
+		int maxId = inFlightForClient.isEmpty() ? 0 : Collections.max(inFlightForClient);
 		int nextPacketId = (maxId + 1) % 0xFFFF;
 		inFlightForClient.add(nextPacketId);
 		return nextPacketId;
