@@ -15,6 +15,12 @@
  */
 package org.eclipse.moquette.server;
 
+import java.io.File;
+import java.io.IOException;
+import java.net.URI;
+import java.util.Properties;
+import java.util.concurrent.TimeUnit;
+
 import org.eclipse.jetty.websocket.client.ClientUpgradeRequest;
 import org.eclipse.jetty.websocket.client.WebSocketClient;
 import org.eclipse.moquette.commons.Constants;
@@ -24,19 +30,13 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.IOException;
-import java.net.URI;
-import java.util.Properties;
-import java.util.concurrent.TimeUnit;
-
 import static org.eclipse.moquette.commons.Constants.PERSISTENT_STORE_PROPERTY_NAME;
 import static org.junit.Assert.assertTrue;
 
 
 /**
  * Integration test to check the function of Moquette with a WebSocket channel.
- * 
+ *
  * @author andreaorg.eclipse.moquette.commons.Constants.
  */
 public class ServerIntegrationWebSocketTest {
@@ -47,7 +47,7 @@ public class ServerIntegrationWebSocketTest {
 
     protected void startServer() throws IOException {
         m_server = new Server();
-        m_server.startServer(new Properties());
+	    m_server.startServer(new Properties());
     }
 
     @Before
@@ -61,10 +61,10 @@ public class ServerIntegrationWebSocketTest {
         client.stop();
         
         m_server.stopServer();
-        File dbFile = new File(m_server.getProperties().getProperty(PERSISTENT_STORE_PROPERTY_NAME));
-        if (dbFile.exists()) {
-            dbFile.delete();
-        }
+	    File dbFile = new File(m_server.getProperties().getProperty(PERSISTENT_STORE_PROPERTY_NAME));
+	    if (dbFile.exists()) {
+		    dbFile.delete();
+	    }
     }
     
     @Test

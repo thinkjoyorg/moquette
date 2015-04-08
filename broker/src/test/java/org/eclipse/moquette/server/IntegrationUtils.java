@@ -23,18 +23,18 @@ import static org.eclipse.moquette.commons.Constants.PERSISTENT_STORE_PROPERTY_N
 
 /**
  * Used to carry integration configurations.
- *
+ * <p/>
  * Created by andrea on 4/7/15.
  */
 class IntegrationUtils {
-    static String localMapDBPath() {
-        String currentDir = System.getProperty("user.dir");
-        return currentDir + File.separator + DEFAULT_MOQUETTE_STORE_MAP_DB_FILENAME;
-    }
+	static String localMapDBPath() {
+		String currentDir = System.getProperty("user.dir");
+		return currentDir + File.separator + DEFAULT_MOQUETTE_STORE_MAP_DB_FILENAME;
+	}
 
-    public static Properties prepareTestPropeties() {
-        Properties testProperties = new Properties();
-        testProperties.put(PERSISTENT_STORE_PROPERTY_NAME, IntegrationUtils.localMapDBPath());
-        return testProperties;
-    }
+	public static Properties prepareTestPropeties() {
+		Properties testProperties = new Properties();
+		testProperties.put(PERSISTENT_STORE_PROPERTY_NAME, IntegrationUtils.localMapDBPath());
+		return testProperties;
+	}
 }

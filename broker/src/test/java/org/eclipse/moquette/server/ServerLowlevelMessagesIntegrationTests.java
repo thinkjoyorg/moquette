@@ -15,6 +15,12 @@
  */
 package org.eclipse.moquette.server;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.Properties;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
 import org.eclipse.moquette.proto.messages.AbstractMessage;
 import org.eclipse.moquette.proto.messages.AbstractMessage.QOSType;
 import org.eclipse.moquette.proto.messages.ConnAckMessage;
@@ -26,12 +32,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.Properties;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 
 import static org.eclipse.moquette.commons.Constants.PERSISTENT_STORE_PROPERTY_NAME;
 import static org.junit.Assert.*;
@@ -46,10 +46,11 @@ public class ServerLowlevelMessagesIntegrationTests {
     Server m_server;
     Client m_client;
     MQTT m_subscriberDef;
+	AbstractMessage receivedMsg;
 
     protected void startServer() throws IOException {
         m_server = new Server();
-        m_server.startServer(new Properties());
+	    m_server.startServer(new Properties());
     }
 
     @Before
@@ -61,32 +62,32 @@ public class ServerLowlevelMessagesIntegrationTests {
         m_subscriberDef.setClientId("Subscriber");
     }
 
-    @After
-    public void tearDown() throws Exception {
-        m_client.close();
-        LOG.debug("After raw client close");
+	@After
+	public void tearDown() throws Exception {
+		m_client.close();
+		LOG.debug("After raw client close");
         Thread.sleep(300); //to let the close event pass before server stop event
         m_server.stopServer();
         LOG.debug("After asked server to stop");
-        File dbFile = new File(m_server.getProperties().getProperty(PERSISTENT_STORE_PROPERTY_NAME));
-        if (dbFile.exists()) {
-            dbFile.delete();
-        }
-    }
+		File dbFile = new File(m_server.getProperties().getProperty(PERSISTENT_STORE_PROPERTY_NAME));
+		if (dbFile.exists()) {
+			dbFile.delete();
+		}
+	}
     
     @Test
     public void elapseKeepAliveTime() throws InterruptedException {
         int keepAlive = 2; //secs
         ConnectMessage connectMessage = new ConnectMessage();
-        connectMessage.setProcotolVersion((byte)3);
-        connectMessage.setClientID("FAKECLNT");
-        connectMessage.setKeepAlive(keepAlive);
+	    connectMessage.setProcotolVersion((byte) 3);
+	    connectMessage.setClientID("FAKECLNT");
+	    connectMessage.setKeepAlive(keepAlive);
         m_client.sendMessage(connectMessage);
-        
-        //wait 2 times the keepAlive
-        Thread.sleep(keepAlive * 2 * 1000);
-        
-        assertTrue(m_client.isConnectionLost());
+
+	    //wait 2 times the keepAlive
+	    Thread.sleep(keepAlive * 2 * 1000);
+
+	    assertTrue(m_client.isConnectionLost());
     }
     
     @Test
@@ -94,25 +95,25 @@ public class ServerLowlevelMessagesIntegrationTests {
         LOG.info("*** checkWillMessageIsWiredOnClientKeepAliveExpiry ***");
         String willTestamentTopic = "/will/test";
         String willTestamentMsg = "Bye bye";
-        
-        BlockingConnection willSubscriber = m_subscriberDef.blockingConnection();
-        willSubscriber.connect();
-        Topic[] topics = new Topic[]{new Topic(willTestamentTopic, QoS.AT_MOST_ONCE)};
-        willSubscriber.subscribe(topics);
-        
-        int keepAlive = 2; //secs
-        ConnectMessage connectMessage = new ConnectMessage();
-        connectMessage.setProcotolVersion((byte)3);
-        connectMessage.setClientID("FAKECLNT");
+
+	    BlockingConnection willSubscriber = m_subscriberDef.blockingConnection();
+	    willSubscriber.connect();
+	    Topic[] topics = new Topic[]{new Topic(willTestamentTopic, QoS.AT_MOST_ONCE)};
+	    willSubscriber.subscribe(topics);
+
+	    int keepAlive = 2; //secs
+	    ConnectMessage connectMessage = new ConnectMessage();
+	    connectMessage.setProcotolVersion((byte) 3);
+	    connectMessage.setClientID("FAKECLNT");
         connectMessage.setKeepAlive(keepAlive);
         connectMessage.setWillFlag(true);
         connectMessage.setWillMessage(willTestamentMsg);
         connectMessage.setWillTopic(willTestamentTopic);
         connectMessage.setWillQos((byte) QOSType.MOST_ONE.ordinal());
-        
-        //Execute
-        m_client.sendMessage(connectMessage);
-        long connectTime = System.currentTimeMillis();
+
+	    //Execute
+	    m_client.sendMessage(connectMessage);
+	    long connectTime = System.currentTimeMillis();
 
         //but after the 2 KEEP ALIVE timeout expires it gets fired,
         //NB it's 1,5 * KEEP_ALIVE so 3 secs and some millis to propagate the message
@@ -125,12 +126,10 @@ public class ServerLowlevelMessagesIntegrationTests {
         msg.ack();
         //the will message hasn't to be received before the elapsing of Keep Alive timeout
         assertTrue(willMessageReceiveTime - connectTime  > 3000);
-        
-        assertEquals(willTestamentMsg, new String(msg.getPayload()));
-        willSubscriber.disconnect();
+
+	    assertEquals(willTestamentMsg, new String(msg.getPayload()));
+	    willSubscriber.disconnect();
     }
-    
-    AbstractMessage receivedMsg;
     
     @Test
     public void checkRejectConnectWithEmptyClientID() throws InterruptedException {

@@ -36,8 +36,8 @@ class PublishEncoder extends DemuxEncoder<PublishMessage> {
         }
         
         ByteBuf variableHeaderBuff = ctx.alloc().buffer(2);
-        ByteBuf buff = null;
-        try {
+	    ByteBuf buff = null;
+	    try {
             variableHeaderBuff.writeBytes(Utils.encodeString(message.getTopicName()));
             if (message.getQos() == AbstractMessage.QOSType.LEAST_ONE || 
                 message.getQos() == AbstractMessage.QOSType.EXACTLY_ONCE ) {
@@ -51,16 +51,16 @@ class PublishEncoder extends DemuxEncoder<PublishMessage> {
 
             byte flags = Utils.encodeFlags(message);
 
-            buff = ctx.alloc().buffer(2 + variableHeaderSize);
-            buff.writeByte(AbstractMessage.PUBLISH << 4 | flags);
+	        buff = ctx.alloc().buffer(2 + variableHeaderSize);
+		    buff.writeByte(AbstractMessage.PUBLISH << 4 | flags);
             buff.writeBytes(Utils.encodeRemainingLength(variableHeaderSize));
             buff.writeBytes(variableHeaderBuff);
             out.writeBytes(buff);
         } finally {
             variableHeaderBuff.release();
-            if (buff != null) {
-                buff.release();
-            }
+	        if (buff != null) {
+		        buff.release();
+	        }
         }
     }
     
