@@ -17,19 +17,22 @@ package org.eclipse.moquette.server;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Objects;
 import java.util.Properties;
+import java.util.Set;
 
+import cn.thinkjoy.im.common.ClientIds;
+import cn.thinkjoy.im.common.PlatformType;
+import org.eclipse.moquette.commons.Constants;
+import org.eclipse.moquette.spi.impl.thinkjoy.OnlineStateManager;
 import org.eclipse.paho.client.mqttv3.*;
 import org.eclipse.paho.client.mqttv3.persist.MqttDefaultFilePersistence;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.*;
+import org.junit.rules.ExpectedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import redis.clients.jedis.Jedis;
 
-import static org.eclipse.moquette.commons.Constants.DEFAULT_MOQUETTE_STORE_MAP_DB_FILENAME;
-import static org.eclipse.moquette.commons.Constants.PERSISTENT_STORE_PROPERTY_NAME;
 import static org.junit.Assert.*;
 
 public class ServerIntegrationPahoTest {
@@ -38,10 +41,12 @@ public class ServerIntegrationPahoTest {
 
     static MqttClientPersistence s_dataStore;
     static MqttClientPersistence s_pubDataStore;
-
+	@Rule
+	public ExpectedException thrown = ExpectedException.none();
 	Server m_server;
 	IMqttClient m_client;
 	TestCallback m_callback;
+	Jedis jedis;
 
 	@BeforeClass
 	public static void beforeTests() {
@@ -57,12 +62,15 @@ public class ServerIntegrationPahoTest {
 
     @Before
     public void setUp() throws Exception {
-	    File dbFile = new File(DEFAULT_MOQUETTE_STORE_MAP_DB_FILENAME);
-	    assertFalse(String.format("The DB storagefile %s already exists", DEFAULT_MOQUETTE_STORE_MAP_DB_FILENAME), dbFile.exists());
+	    File dbFile = new File(org.eclipse.moquette.commons.Constants.DEFAULT_MOQUETTE_STORE_MAP_DB_FILENAME);
+	    assertFalse(String.format("The DB storagefile %s already exists", org.eclipse.moquette.commons.Constants.DEFAULT_MOQUETTE_STORE_MAP_DB_FILENAME), dbFile.exists());
 
+	    jedis = RedisPool.getPool().getResource();
 	    startServer();
 
-	    m_client = new MqttClient("tcp://localhost:1883", "TestClient", s_dataStore);
+	    String clientID = ClientIds.generateClientId("zhiliao", "gbdai", PlatformType.Android());
+
+	    m_client = new MqttClient("tcp://localhost:1883", clientID, s_dataStore);
 	    m_callback = new TestCallback();
 	    m_client.setCallback(m_callback);
     }
@@ -74,18 +82,64 @@ public class ServerIntegrationPahoTest {
         }
 
         m_server.stopServer();
-	    File dbFile = new File(m_server.getProperties().getProperty(PERSISTENT_STORE_PROPERTY_NAME));
+	    File dbFile = new File(m_server.getProperties().getProperty(org.eclipse.moquette.commons.Constants.PERSISTENT_STORE_PROPERTY_NAME));
 	    if (dbFile.exists()) {
 		    dbFile.delete();
 	    }
+	    jedis.flushAll();
+	    RedisPool.getPool().returnResource(jedis);
+
 	    assertFalse(dbFile.exists());
     }
+
+	@Test
+	public void testGetNodeList() throws Exception {
+		LOG.info("test GetNodeList ...");
+		int size = jedis.smembers(Constants.KEY_NODE_LIST).size();
+		Set<String> set = jedis.smembers(Constants.KEY_NODE_LIST);
+		assertEquals(1, size);
+		assertEquals("tcp://0.0.0.0:1883", set.iterator().next());
+	}
+
+	@Test
+	public void testAddRouteAfterSubscribe() throws Exception {
+		LOG.info("*** testAddRouteAfterSubscribe ***");
+		m_client.connect();
+		m_client.subscribe("/topic", 0);
+		m_client.subscribe("/group", 0);
+		m_client.subscribe("/ids", 0);
+		assertEquals(1, jedis.keys("/topic").size());
+		assertEquals(1, jedis.keys("/group").size());
+		assertEquals(1, jedis.keys("/ids").size());
+		assertEquals("tcp://0.0.0.0:1883", jedis.smembers("/topic").iterator().next());
+
+	}
+
+	@Test
+	public void testCleanRouteAfterUnsubscribe() throws Exception {
+		LOG.info("*** testCleanRouteAfterUnsubscribe ***");
+		m_client.connect();
+		m_client.subscribe("/topic", 0);
+
+		m_client.unsubscribe("/topic");
+		assertEquals(0, jedis.smembers("/topic").size());
+	}
+
+	@Test
+	public void testCleanRouteAfterDisconnect() throws Exception {
+		LOG.info("*** testCleanRouteAfterDisconnect ***");
+		m_client.connect();
+		m_client.subscribe("/topic", 0);
+
+		m_client.disconnect();
+		assertEquals(0, jedis.smembers("/topic").size());
+	}
 
 	@Test
 	public void testSubscribe() throws Exception {
 		LOG.info("*** testSubscribe ***");
 		m_client.connect();
-        m_client.subscribe("/topic", 0);
+		m_client.subscribe("/topic", 0);
 
         MqttMessage message = new MqttMessage("Hello world!!".getBytes());
         message.setQos(0);
@@ -93,13 +147,13 @@ public class ServerIntegrationPahoTest {
         m_client.publish("/topic", message);
 
 		assertEquals("/topic", m_callback.getTopic());
+		assertEquals("Hello world!!", m_callback.getMessage(false).toString());
 	}
-
 
 	@Test
 	public void testCleanSession_maintainClientSubscriptions() throws Exception {
 		LOG.info("*** testCleanSession_maintainClientSubscriptions ***");
-        MqttConnectOptions options = new MqttConnectOptions();
+		MqttConnectOptions options = new MqttConnectOptions();
         options.setCleanSession(false);
         m_client.connect(options);
         m_client.subscribe("/topic", 0);
@@ -114,7 +168,6 @@ public class ServerIntegrationPahoTest {
 
         assertEquals("/topic", m_callback.getTopic());
     }
-
 
     @Test
     public void testCleanSession_maintainClientSubscriptions_againstClientDestruction() throws Exception {
@@ -230,7 +283,7 @@ public class ServerIntegrationPahoTest {
     public void testPublishWithQoS1() throws Exception {
         LOG.info("*** testPublishWithQoS1 ***");
         m_client.connect();
-	    m_client.subscribe("/topic", 1);
+	    m_client.subscribe("/topic/#", 1);
 	    m_client.publish("/topic", "Hello MQTT".getBytes(), 1, false);
 	    m_client.disconnect();
 
@@ -246,7 +299,7 @@ public class ServerIntegrationPahoTest {
 		MqttConnectOptions options = new MqttConnectOptions();
 		options.setCleanSession(false);
 		m_client.connect(options);
-        m_client.subscribe("/topic", 1);
+		m_client.subscribe("/topic", 1);
         m_client.disconnect();
 
         //publish a QoS 1 message another client publish a message on the topic
@@ -263,7 +316,7 @@ public class ServerIntegrationPahoTest {
 		MqttConnectOptions options = new MqttConnectOptions();
 		options.setCleanSession(false);
 		m_client.connect(options);
-        m_client.subscribe("/topic", 1);
+		m_client.subscribe("/topic", 1);
         m_client.disconnect();
 
 		m_client.connect(options);
@@ -275,7 +328,7 @@ public class ServerIntegrationPahoTest {
 		//Verify that after a reconnection the client receive the message
 		MqttMessage message = m_callback.getMessage(true);
 		assertNotNull(message);
-        assertEquals("Hello MQTT", message.toString());
+		assertEquals("Hello MQTT", message.toString());
     }
 
 	private void publishFromAnotherClient(String topic, byte[] payload, int qos) throws Exception {
@@ -310,7 +363,7 @@ public class ServerIntegrationPahoTest {
 		MqttConnectOptions options = new MqttConnectOptions();
 		options.setCleanSession(false);
 		m_client.connect(options);
-        m_client.subscribe("/topic", 2);
+		m_client.subscribe("/topic", 2);
         m_client.disconnect();
 
         //publish a QoS 2 message another client publish a message on the topic
@@ -330,7 +383,7 @@ public class ServerIntegrationPahoTest {
 		MqttConnectOptions options = new MqttConnectOptions();
 		options.setCleanSession(false);
 		m_client.connect(options);
-        m_client.subscribe("/topic", 1);
+		m_client.subscribe("/topic", 1);
         m_client.disconnect();
 
 		publishFromAnotherClient("/topic", "Hello MQTT 1".getBytes(), 1);
@@ -352,7 +405,104 @@ public class ServerIntegrationPahoTest {
 		assertNotNull(m_callback);
 		message = m_callback.getMessage(true);
 		assertNotNull(message);
-        assertEquals("Hello MQTT 2", message.toString());
+		assertEquals("Hello MQTT 2", message.toString());
     }
 
+	@Test
+	public void testOnlineState() throws Exception {
+//		LOG.info("*** testOnlineState ***");
+//		MqttConnectOptions options = new MqttConnectOptions();
+//		options.setCleanSession(true);
+//		String clientId = ClientIds.generateClientId("zhiliao", "gbdai", PlatformType.Android());
+//		MqttClient client = new MqttClient("tcp://localhost:1883", clientId);
+//		client.connect(options);
+//		String accountArea = ClientIds.getAccountArea(clientId);
+//		String account = ClientIds.getAccount(clientId);
+//		String key = accountArea.concat(account);
+//
+//		assertTrue(jedis.sismember(key, clientId));
+//
+//		client.disconnect();
+//		Set<String> smembers = jedis.smembers(key);
+//		if(smembers.size() > 0){
+//			assertFalse(jedis.sismember(key,clientId));
+//		}
+	}
+
+	@Test
+	public void testOnlineStateManager() throws Exception {
+		String clientId1 = ClientIds.generateClientId("zhiliao", "gbdai", PlatformType.Android());
+		String clientId2 = ClientIds.generateClientId("zhiliao", "gbdai", PlatformType.Android());
+		String clientId3 = ClientIds.generateClientId("zhiliao", "gbdai", PlatformType.Android());
+		OnlineStateManager.put(clientId1);
+		OnlineStateManager.put(clientId2);
+		OnlineStateManager.put(clientId3);
+		assertTrue(OnlineStateManager.get(clientId1).size() == 3);
+
+		OnlineStateManager.remove(clientId1);
+		OnlineStateManager.remove(clientId2);
+		OnlineStateManager.remove(clientId3);
+		assertTrue(OnlineStateManager.get(clientId1).size() == 0);
+
+		String clientId4 = ClientIds.generateClientId("zhiliao", "xyzhang", PlatformType.Android());
+		String clientId5 = ClientIds.generateClientId("xiaoyuanyun", "gbdai", PlatformType.Android());
+
+		assertTrue(1 == OnlineStateManager.getMutiClientAllowable(clientId4));
+		assertTrue(2 == OnlineStateManager.getMutiClientAllowable(clientId5));
+		//OnlineStateManager.
+
+	}
+
+	@Test
+	public void testConnectConflict() throws Exception {
+		String anotherClientID = ClientIds.generateClientId("zhiliao", "gbdai", PlatformType.Android());
+		m_client.connect();
+		m_client.subscribe(m_client.getClientId());
+		String tmpDir = System.getProperty("java.io.tmpdir");
+		MqttClientPersistence anotherStore = new MqttDefaultFilePersistence(tmpDir + File.separator + "anotherClient");
+		MqttClient anotherClient = new MqttClient("tcp://localhost:1883", anotherClientID, anotherStore);
+
+		anotherClient.connect();
+		anotherClient.disconnect();
+
+		assertTrue(Objects.equals(Constants.M_CONNECT_CONFLICT, m_callback.getMessage(true).toString()));
+	}
+
+	@Test(expected = MqttException.class)
+	public void testConnectionPrevent() throws Exception {
+		String anotherClientID = ClientIds.generateClientId("xiaoyuanyun", "xyzhang", PlatformType.Android());
+		String aClientID = ClientIds.generateClientId("xiaoyuanyun", "xyzhang", PlatformType.Android());
+		String tmpDir = System.getProperty("java.io.tmpdir");
+		MqttClientPersistence anotherStore = new MqttDefaultFilePersistence(tmpDir + File.separator + "anotherClient");
+		MqttClientPersistence aStore = new MqttDefaultFilePersistence(tmpDir + File.separator + "anotherClient");
+		MqttClient anotherClient = new MqttClient("tcp://localhost:1883", anotherClientID, anotherStore);
+		MqttClient aClient = new MqttClient("tcp://localhost:1883", aClientID, aStore);
+		aClient.connect();
+		anotherClient.connect();
+		//	assertTrue(Objects.equals(Constants.M_CONNECT_CONFLICT, "1"));
+	}
+
+	@Test
+	public void testAreaAuthicatorSUCCESS() throws Exception {
+		String aClientID = ClientIds.generateClientId("xiaoyuanyun", "xyzhang", PlatformType.Android());
+		String tmpDir = System.getProperty("java.io.tmpdir");
+		MqttClientPersistence aStore = new MqttDefaultFilePersistence(tmpDir + File.separator + "anotherClient");
+		MqttClient aClient = new MqttClient("tcp://localhost:1883", aClientID, aStore);
+		MqttConnectOptions options = new MqttConnectOptions();
+		options.setUserName("xiaoyuanyun");
+		options.setPassword("111111".toCharArray());
+		aClient.connect(options);
+	}
+
+	@Test(expected = MqttException.class)
+	public void testAreaAuthicatorFail() throws Exception {
+		String aClientID = ClientIds.generateClientId("xiaoyuanyun", "xyzhang", PlatformType.Android());
+		String tmpDir = System.getProperty("java.io.tmpdir");
+		MqttClientPersistence aStore = new MqttDefaultFilePersistence(tmpDir + File.separator + "anotherClient");
+		MqttClient aClient = new MqttClient("tcp://localhost:1883", aClientID, aStore);
+		MqttConnectOptions options = new MqttConnectOptions();
+		options.setUserName("xiaoyuanyun1");
+		options.setPassword("111111".toCharArray());
+		aClient.connect(options);
+	}
 }
