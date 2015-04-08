@@ -159,7 +159,7 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 		            histogram.recordValue(delay);
 	            }
             } catch (Throwable th) {
-                LOG.error("Grave error processing the message {} for {}", message, session, th);
+                LOG.error("Serious error processing the message {} for {}", message, session, th);
             }
         }
     }
