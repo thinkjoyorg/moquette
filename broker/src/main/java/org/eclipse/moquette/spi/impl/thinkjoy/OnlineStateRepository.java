@@ -1,0 +1,117 @@
+package org.eclipse.moquette.spi.impl.thinkjoy;
+
+import java.util.Set;
+
+import cn.thinkjoy.cloudstack.cache.RedisRepository;
+import cn.thinkjoy.cloudstack.cache.RedisRepositoryFactory;
+import cn.thinkjoy.im.common.ClientIds;
+import com.google.common.base.Optional;
+import com.google.common.collect.Sets;
+import org.eclipse.moquette.commons.Constants;
+import org.eclipse.moquette.proto.MQTTException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * 创建人：xy
+ * 创建时间：15/4/9
+ *
+ * @version 1.0
+ */
+
+public final class OnlineStateRepository {
+	private static final Logger LOGGER = LoggerFactory.getLogger(TopicRouterRepository.class);
+
+	private final static RedisRepository<String, Object> redisRepository;
+
+	static {
+		try {
+			redisRepository = RedisRepositoryFactory.getRepository("im-service", "common", "onlineStateRedis");
+		} catch (Exception e) {
+			LOGGER.error("get online state redis fail...");
+			throw new RuntimeException("get online state redis fail...");
+		}
+	}
+
+	/**
+	 * 将用户连接的用户放入缓存中, userID为key,clientID为value
+	 * userID = accountArea+account
+	 * e.g : accountArea = zhiliao
+	 * account = testuser
+	 * userID = zhiliaotestuser
+	 *
+	 * @param clientID
+	 */
+	public static final void put(String clientID) {
+		try {
+			String userID = buildUserID(clientID);
+			redisRepository.sAdd(userID, clientID);
+		} catch (Exception e) {
+			LOGGER.error(String.format("put [userState] %s fail.", clientID));
+			throw new MQTTException("put [userState] fail:" + clientID);
+		}
+	}
+
+	/**
+	 * 构建userID
+	 * userID = accountArea+account
+	 * e.g : accountArea = zhiliao
+	 * account = testuser
+	 * userID = zhiliaotestuser
+	 *
+	 * @param clientID
+	 * @return
+	 */
+	private static String buildUserID(String clientID) {
+		String accountArea = ClientIds.getAccountArea(clientID);
+		String account = ClientIds.getAccount(clientID);
+		return accountArea.concat(account);
+	}
+
+	/**
+	 * 将断开连接的用户从缓存中清除, userID为key,clientID为value
+	 *
+	 * @param clientID
+	 */
+	public static final void remove(String clientID) {
+		try {
+			String userID = buildUserID(clientID);
+			Set<Object> members = redisRepository.sMembers(userID);
+			for (Object member : members) {
+				if (clientID.equals(member.toString())) {
+					redisRepository.sRem(userID, member);
+				}
+			}
+		} catch (Exception e) {
+			LOGGER.error(String.format("remove [userState] %s fail.", clientID));
+			throw new MQTTException("remove [userState] fail:" + clientID);
+		}
+	}
+
+	public static final Set<Object> get(String clientID) {
+		try {
+			String userID = buildUserID(clientID);
+			Set<Object> members = redisRepository.sMembers(userID);
+			if (members.size() > 0) {
+				return members;
+			} else {
+				return Sets.newHashSet();
+			}
+		} catch (Exception e) {
+			LOGGER.error(String.format("query [isOnline] %s fail.", clientID));
+			throw new MQTTException("query [isOnline] fail:" + clientID);
+		}
+	}
+
+	//查询该clientID所属域账号下的多终端登录策略,kick or prevent
+	public static final int getMutiClientAllowable(String clientID) {
+		try {
+			String accountArea = ClientIds.getAccountArea(clientID);
+			Optional<Object> kickOrPrevent = Optional.of(AccountRepository.get(Constants.KEY_MUTI_CLIENT_ALLOWABLE, accountArea));
+			return Integer.parseInt(kickOrPrevent.get().toString());
+		} catch (Exception e) {
+			LOGGER.error(String.format("query [mutiClientAllowable] %s fail.", clientID));
+			throw new MQTTException("query [mutiClientAllowable] fail:" + clientID);
+		}
+	}
+}

@@ -18,18 +18,15 @@ package org.eclipse.moquette.server;
 import java.io.File;
 import java.io.IOException;
 import java.text.ParseException;
-import java.util.Enumeration;
-import java.util.Objects;
 import java.util.Properties;
 
+import cn.thinkjoy.cloudstack.cmc.ClusterManagerClientFactory;
 import org.eclipse.moquette.commons.Constants;
-import org.eclipse.moquette.server.cluster.Node;
 import org.eclipse.moquette.server.jdbc.DB;
 import org.eclipse.moquette.server.netty.NettyAcceptor;
 import org.eclipse.moquette.spi.impl.SimpleMessaging;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import redis.clients.jedis.Jedis;
 
 /**
  * Launch a  configured version of the server.
@@ -96,8 +93,9 @@ public class Server {
 
 	    LOG.info("Persistent store file: " + m_properties.get(Constants.PERSISTENT_STORE_PROPERTY_NAME));
 
-	    initNode(m_properties);
 	    initDB(jdbcProp);
+
+	    ClusterManagerClientFactory.createClient().register();
 
 	    messaging = SimpleMessaging.getInstance();
 	    messaging.init(m_properties);
@@ -113,57 +111,6 @@ public class Server {
 		db.initMutiClientAllowableToRedis();
 	}
 
-	/**
-	 * 初始化节点信息。用于集群模式
-	 *
-	 * @param configProps
-	 */
-	private void initNode(Properties configProps) {
-
-		System.out.println("init redis pool...");
-		Jedis jedis = null;
-		try {
-			jedis = RedisPool.getPool().getResource();
-			String host = configProps.getProperty(Constants.HOST_PROPERTY_NAME);
-			int nodeId = Integer.parseInt(configProps.getProperty(Constants.NODEID_PROPERTY_NAME));
-			int port = Integer.parseInt(configProps.getProperty(Constants.PORT_PROPERTY_NAME));
-			Node node = new Node(nodeId, host, port);
-			jedis.sadd(Constants.KEY_NODE_LIST, node.getNodeUri());
-		} catch (Exception ex) {
-			LOG.error("init node info fail...");
-			throw new RuntimeException("init node info fail...");
-		} finally {
-			RedisPool.getPool().returnResource(jedis);
-		}
-
-	}
-
-	/**
-	 * 初始化允许多终端登录的域账号
-	 *
-	 * @param configProps
-	 */
-	private void initMutiClientAllowable(Properties configProps) {
-		System.out.println("init muticlient allowable ...");
-		Jedis jedis = null;
-		try {
-			jedis = RedisPool.getPool().getResource();
-			Enumeration<?> areaAccounts = configProps.propertyNames();
-			while (areaAccounts.hasMoreElements()) {
-				String areaAccount = areaAccounts.nextElement().toString();
-				String v = configProps.get(areaAccount).toString();
-				//1表示允许多终端登录
-				if (Objects.equals("1", v)) {
-					jedis.sadd(Constants.KEY_MUTI_CLIENT_ALLOWABLE, areaAccount);
-				}
-			}
-		} catch (Exception ex) {
-			LOG.error("init muticlient allowable fail...");
-			throw new RuntimeException("init muticlient allowable fail...");
-		} finally {
-			RedisPool.getPool().returnResource(jedis);
-		}
-	}
 	public void stopServer() {
 		LOG.info("Server stopping...");
 		messaging.stop();

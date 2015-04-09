@@ -16,7 +16,6 @@
 package org.eclipse.moquette.server;
 
 import io.netty.util.AttributeKey;
-import org.eclipse.moquette.server.cluster.Node;
 
 /**
  *
@@ -33,6 +32,4 @@ public interface ServerChannel {
 	void close(boolean immediately);
     
     void write(Object value);
-
-	Node getBrokerNode();
 }

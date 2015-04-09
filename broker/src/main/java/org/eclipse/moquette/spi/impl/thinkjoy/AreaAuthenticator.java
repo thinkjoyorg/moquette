@@ -1,11 +1,6 @@
 package org.eclipse.moquette.spi.impl.thinkjoy;
 
-import java.util.Objects;
-
-import org.eclipse.moquette.commons.Constants;
 import org.eclipse.moquette.server.IAuthenticator;
-import org.eclipse.moquette.server.RedisPool;
-import redis.clients.jedis.Jedis;
 
 /**
  * 创建人：xy
@@ -17,13 +12,14 @@ import redis.clients.jedis.Jedis;
 public class AreaAuthenticator implements IAuthenticator {
 	@Override
 	public boolean checkValid(String username, String password) {
-		Jedis resource = RedisPool.getPool().getResource();
-		String pwd = resource.hget(Constants.KEY_AREA_ACCOUNT, username);
-		RedisPool.getPool().returnResource(resource);
-		if (Objects.equals(pwd, password)) {
-			return true;
-		} else {
-			return false;
-		}
+//		Jedis resource = RedisPool.getPool().getResource();
+//		String pwd = resource.hget(Constants.KEY_AREA_ACCOUNT, username);
+//		RedisPool.getPool().returnResource(resource);
+//		if (Objects.equals(pwd, password)) {
+//			return true;
+//		} else {
+//			return false;
+//		}
+		return true;
 	}
 }

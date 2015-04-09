@@ -24,7 +24,6 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
 import org.eclipse.moquette.proto.Utils;
 import org.eclipse.moquette.proto.messages.AbstractMessage;
 import org.eclipse.moquette.proto.messages.PingRespMessage;
-import org.eclipse.moquette.server.cluster.Node;
 import org.eclipse.moquette.spi.IMessaging;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,7 +40,6 @@ public class NettyMQTTHandler extends ChannelInboundHandlerAdapter {
     private static final Logger LOG = LoggerFactory.getLogger(NettyMQTTHandler.class);
     private final Map<ChannelHandlerContext, NettyChannel> m_channelMapper = new HashMap<ChannelHandlerContext, NettyChannel>();
 	private IMessaging m_messaging;
-	private Node brokerNode;
 
 	@Override
 	public void channelRead(ChannelHandlerContext ctx, Object message) {
@@ -61,7 +59,7 @@ public class NettyMQTTHandler extends ChannelInboundHandlerAdapter {
                     NettyChannel channel;
                     synchronized(m_channelMapper) {
                         if (!m_channelMapper.containsKey(ctx)) {
-	                        m_channelMapper.put(ctx, new NettyChannel(ctx, brokerNode));
+	                        m_channelMapper.put(ctx, new NettyChannel(ctx));
                         }
                         channel = m_channelMapper.get(ctx);
                     }
@@ -93,7 +91,4 @@ public class NettyMQTTHandler extends ChannelInboundHandlerAdapter {
         m_messaging = messaging;
     }
 
-	public void setBrokerNode(Node brokerNode) {
-		this.brokerNode = brokerNode;
-	}
 }

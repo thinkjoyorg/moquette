@@ -36,8 +36,8 @@ import org.eclipse.moquette.spi.ISessionsStore;
 import org.eclipse.moquette.spi.impl.events.*;
 import org.eclipse.moquette.spi.impl.subscriptions.Subscription;
 import org.eclipse.moquette.spi.impl.subscriptions.SubscriptionsStore;
-import org.eclipse.moquette.spi.impl.thinkjoy.OnlineStateManager;
-import org.eclipse.moquette.spi.impl.thinkjoy.TopicRouter;
+import org.eclipse.moquette.spi.impl.thinkjoy.OnlineStateRepository;
+import org.eclipse.moquette.spi.impl.thinkjoy.TopicRouterRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -116,15 +116,15 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 
 	    //处理不允许多终端登录的场景的策略。1:kick,2:prevent
 	    //如果该域下同一个账号多终端登录的策略是kick得话
-	    int mutiClientAllowable = OnlineStateManager.getMutiClientAllowable(msg.getClientID());
+	    int mutiClientAllowable = OnlineStateRepository.getMutiClientAllowable(msg.getClientID());
 	    if (1 == mutiClientAllowable) {
-		    Set<String> members = OnlineStateManager.get(msg.getClientID());
-		    for (String clientID : members) {
-			    publishForConnectConflict(clientID);
+		    Set<Object> members = OnlineStateRepository.get(msg.getClientID());
+		    for (Object clientID : members) {
+			    publishForConnectConflict(clientID.toString());
 		    }
 	    } else if (2 == mutiClientAllowable) {
 		    //如果该域下同一个账号多终端登录的策略是prevent
-		    Set<String> members = OnlineStateManager.get(msg.getClientID());
+		    Set<Object> members = OnlineStateRepository.get(msg.getClientID());
 		    if (members.size() > 0) {
 			    ConnAckMessage okResp = new ConnAckMessage();
 			    okResp.setReturnCode(ConnAckMessage.SERVER_UNAVAILABLE);
@@ -135,7 +135,7 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 	    }
 
 	    // put client online
-	    OnlineStateManager.put(msg.getClientID());
+	    OnlineStateRepository.put(msg.getClientID());
 
         //if an old client with the same ID already exists close its session.
         if (m_clientIDs.containsKey(msg.getClientID())) {
@@ -506,10 +506,10 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 
 	    Set<Subscription> subscription = m_sessionsStore.getSubscriptionById(clientID);
 	    for (Subscription s : subscription) {
-		    TopicRouter.cleanRouteByTopic(s.getTopicFilter());
+		    TopicRouterRepository.cleanRouteByTopic(s.getTopicFilter());
 	    }
 	    //clear onlineState
-	    OnlineStateManager.remove(clientID);
+	    OnlineStateRepository.remove(clientID);
 
 	    if (cleanSession) {
 		    //cleanup topic subscriptions
@@ -565,7 +565,7 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
         for (String topic : topics) {
             subscriptions.removeSubscription(topic, clientID);
 
-	        TopicRouter.cleanRouteByTopic(topic);
+	        TopicRouterRepository.cleanRouteByTopic(topic);
         }
         //ack the client
         UnsubAckMessage ackMessage = new UnsubAckMessage();
@@ -586,7 +586,7 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
             Subscription newSubscription = new Subscription(clientID, req.getTopicFilter(), qos, cleanSession);
             subscribeSingleTopic(newSubscription, req.getTopicFilter());
 
-	        TopicRouter.addRoute(req.getTopicFilter(), session.getBrokerNode().getNodeUri());
+	        TopicRouterRepository.addRoute(req.getTopicFilter());
         }
 
         //ack the client

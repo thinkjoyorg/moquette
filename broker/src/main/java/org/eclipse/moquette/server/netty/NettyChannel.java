@@ -21,7 +21,6 @@ import io.netty.util.Attribute;
 import io.netty.util.AttributeKey;
 import org.eclipse.moquette.server.Constants;
 import org.eclipse.moquette.server.ServerChannel;
-import org.eclipse.moquette.server.cluster.Node;
 
 /**
  *
@@ -33,10 +32,8 @@ public class NettyChannel implements ServerChannel {
 	public static final AttributeKey<Object> ATTR_KEY_CLEANSESSION = AttributeKey.valueOf(Constants.CLEAN_SESSION);
 	public static final AttributeKey<Object> ATTR_KEY_CLIENTID = AttributeKey.valueOf(Constants.ATTR_CLIENTID);
 	private ChannelHandlerContext m_channel;
-	private Node brokerNode;
 
-	NettyChannel(ChannelHandlerContext ctx, Node node) {
-		brokerNode = node;
+	NettyChannel(ChannelHandlerContext ctx) {
 		m_channel = ctx;
 	}
 
@@ -68,11 +65,6 @@ public class NettyChannel implements ServerChannel {
     public void write(Object value) {
         m_channel.writeAndFlush(value);
     }
-
-	@Override
-	public Node getBrokerNode() {
-		return this.brokerNode;
-	}
 
 	@Override
 	public String toString() {

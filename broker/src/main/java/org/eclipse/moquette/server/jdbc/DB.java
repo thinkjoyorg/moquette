@@ -4,10 +4,9 @@ import java.sql.*;
 import java.util.Properties;
 
 import org.eclipse.moquette.commons.Constants;
-import org.eclipse.moquette.server.RedisPool;
+import org.eclipse.moquette.spi.impl.thinkjoy.AccountRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import redis.clients.jedis.Jedis;
 
 /**
  * 创建人：xy
@@ -44,70 +43,68 @@ public final class DB {
 	public void initAreaToRedis() {
 		Connection connection = null;
 		PreparedStatement ps = null;
-		Jedis resource = null;
 		ResultSet rs = null;
 		try {
 			connection = getConnection();
 			String sql = "select account,password from im_area_account aa where aa.status != -1";
 			ps = connection.prepareStatement(sql);
-			resource = RedisPool.getPool().getResource();
 			rs = ps.executeQuery();
 			while (rs.next()) {
 				String account = rs.getString("account");
 				String password = rs.getString("password");
-				resource.hset(Constants.KEY_AREA_ACCOUNT, account, password);
+				AccountRepository.set(Constants.KEY_AREA_ACCOUNT, account, password);
 			}
 		} catch (SQLException e) {
 			LOG.error("initAreaToRedis fail...");
 		} finally {
-			release(connection, ps, rs, resource);
+			release(connection, ps, rs);
 		}
 	}
 
 	public void initMutiClientAllowableToRedis() {
 		Connection connection = null;
 		PreparedStatement ps = null;
-		Jedis resource = null;
 		ResultSet rs = null;
 		try {
 			connection = getConnection();
 			String sql = "select a.account,r.kickOrPrevent from `im_area_account` a inner join `im_area_acc_rule` r on a.`id` = r.`areaAccountId` where a.`status` != -1";
 			ps = connection.prepareStatement(sql);
-			resource = RedisPool.getPool().getResource();
 			rs = ps.executeQuery();
 			while (rs.next()) {
 				String account = rs.getString("account");
 				int kickOrPrevent = rs.getInt("kickOrPrevent");
-				resource.hset(Constants.KEY_MUTI_CLIENT_ALLOWABLE, account, String.valueOf(kickOrPrevent));
+				AccountRepository.set(Constants.KEY_MUTI_CLIENT_ALLOWABLE, account, String.valueOf(kickOrPrevent));
 			}
 		} catch (SQLException e) {
 			LOG.error("initMutiClientAllowableToRedis fail...");
 		} finally {
-			release(connection, ps, rs, resource);
+			release(connection, ps, rs);
 		}
 	}
 
-	private void release(Connection c, PreparedStatement ps, ResultSet rs, Jedis resource) {
-		if (rs != null)
+	private void release(Connection c, PreparedStatement ps, ResultSet rs) {
+		if (rs != null) {
 			try {
 				rs.close();
 			} catch (SQLException e) {
 				//ignore
 			}
-		if (ps != null)
+		}
+		if (ps != null) {
 			try {
 				ps.close();
 			} catch (SQLException e) {
 				//ignore
 			}
-		if (c != null)
+		}
+		if (c != null) {
 			try {
 				c.close();
 			} catch (SQLException e) {
 				//ignore
 			}
-		if (resource != null)
-			RedisPool.getPool().returnResource(resource);
+		}
+
 	}
 
 }
