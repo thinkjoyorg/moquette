@@ -24,7 +24,6 @@ import io.netty.util.AttributeKey;
 import org.eclipse.moquette.proto.messages.*;
 import org.eclipse.moquette.proto.messages.AbstractMessage.QOSType;
 import org.eclipse.moquette.server.ServerChannel;
-import org.eclipse.moquette.server.cluster.Node;
 import org.eclipse.moquette.server.netty.NettyChannel;
 import org.eclipse.moquette.spi.IMatchingCondition;
 import org.eclipse.moquette.spi.IMessagesStore;
@@ -69,7 +68,7 @@ public class ProtocolProcessorTest {
         connMsg = new ConnectMessage();
         connMsg.setProcotolVersion((byte) 0x03);
 
-	    m_session = new DummyChannel(new Node(1, "0.0.0.0", 1883));
+	    m_session = new DummyChannel();
 
         //sleep to let the messaging batch processor to process the initEvent
         Thread.sleep(300);
@@ -188,7 +187,7 @@ public class ProtocolProcessorTest {
         m_processor.processDisconnect(m_session, new DisconnectMessage());
 
         //Exercise, reconnect
-	    MockReceiverChannel firstReceiverSession = new MockReceiverChannel(new Node(1, "0.0.0.0", 1883));
+	    MockReceiverChannel firstReceiverSession = new MockReceiverChannel();
 	    m_processor.processConnect(firstReceiverSession, connMsg);
 
         //Verify
@@ -264,7 +263,7 @@ public class ProtocolProcessorTest {
         subs.init(new MemoryStorageService());
         m_processor.init(subs, m_storageService, m_sessionStore, null);
 
-	    MockReceiverChannel firstReceiverSession = new MockReceiverChannel(new Node(1, "0.0.0.0", 1883));
+	    MockReceiverChannel firstReceiverSession = new MockReceiverChannel();
 	    ConnectMessage connectMessage = new ConnectMessage();
         connectMessage.setProcotolVersion((byte)3);
         connectMessage.setClientID(FAKE_CLIENT_ID);
@@ -272,7 +271,7 @@ public class ProtocolProcessorTest {
         m_processor.processConnect(firstReceiverSession, connectMessage);
 
         //connect the second fake subscriber
-	    MockReceiverChannel secondReceiverSession = new MockReceiverChannel(new Node(1, "0.0.0.0", 1883));
+	    MockReceiverChannel secondReceiverSession = new MockReceiverChannel();
 	    ConnectMessage connectMessage2 = new ConnectMessage();
         connectMessage2.setProcotolVersion((byte)3);
         connectMessage2.setClientID(FAKE_CLIENT_ID2);
@@ -342,7 +341,7 @@ public class ProtocolProcessorTest {
     public void testPublishOfRetainedMessage_afterNewSubscription() throws Exception {
         final CountDownLatch publishRecvSignal = new CountDownLatch(1);
         /*ServerChannel */
-	    m_session = new DummyChannel(new Node(1, "0.0.0.0", 1883)) {
+	    m_session = new DummyChannel() {
 		    @Override
             public void write(Object value) {
                 try {
@@ -522,7 +521,7 @@ public class ProtocolProcessorTest {
 	 */
 	@Test
 	public void testConnectionLostClosesTheCorrectSession() {
-		MockReceiverChannel channel1 = new MockReceiverChannel(new Node(1, "0.0.0.0", 1883));
+		MockReceiverChannel channel1 = new MockReceiverChannel();
 
 		//init the processor
         /*SubscriptionsStore subs = new SubscriptionsStore();
@@ -540,7 +539,7 @@ public class ProtocolProcessorTest {
 
         //send a connection lost event from an already disconnected client, but with same clientID (FAKE_CLIENT_ID)
         //Exercise
-		DummyChannel channel2 = new DummyChannel(new Node(1, "0.0.0.0", 1883));
+		DummyChannel channel2 = new DummyChannel();
 		LostConnectionEvent lostConnectionEvent = new LostConnectionEvent(channel2, FAKE_CLIENT_ID);
         m_processor.processConnectionLost(lostConnectionEvent);
 
@@ -556,12 +555,7 @@ public class ProtocolProcessorTest {
 	}
 
 	class DummyChannel implements ServerChannel {
-		Node node;
 		private Map<Object, Object> m_attributes = new HashMap<Object, Object>();
-
-		public DummyChannel(Node node) {
-			this.node = node;
-		}
 
 		public Object getAttribute(AttributeKey<Object> key) {
 			return m_attributes.get(key);
@@ -590,10 +584,6 @@ public class ProtocolProcessorTest {
 			}
 		}
 
-		@Override
-		public Node getBrokerNode() {
-			return node;
-		}
 	}
 
 	/**
@@ -602,12 +592,7 @@ public class ProtocolProcessorTest {
 	class MockReceiverChannel implements ServerChannel {
 		//        byte m_returnCode;
 		AbstractMessage m_receivedMessage;
-		Node node;
 		private Map<Object, Object> m_attributes = new HashMap<Object, Object>();
-
-		public MockReceiverChannel(Node node) {
-			this.node = node;
-		}
 
 		public Object getAttribute(AttributeKey<Object> key) {
 			return m_attributes.get(key);
@@ -642,9 +627,5 @@ public class ProtocolProcessorTest {
 			}
 		}
 
-		@Override
-		public Node getBrokerNode() {
-			return node;
-		}
 	}
 }

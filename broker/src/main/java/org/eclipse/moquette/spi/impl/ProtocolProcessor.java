@@ -114,29 +114,6 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
             return;
         }
 
-	    //处理不允许多终端登录的场景的策略。1:kick,2:prevent
-	    //如果该域下同一个账号多终端登录的策略是kick得话
-	    int mutiClientAllowable = OnlineStateRepository.getMutiClientAllowable(msg.getClientID());
-	    if (1 == mutiClientAllowable) {
-		    Set<Object> members = OnlineStateRepository.get(msg.getClientID());
-		    for (Object clientID : members) {
-			    publishForConnectConflict(clientID.toString());
-		    }
-	    } else if (2 == mutiClientAllowable) {
-		    //如果该域下同一个账号多终端登录的策略是prevent
-		    Set<Object> members = OnlineStateRepository.get(msg.getClientID());
-		    if (members.size() > 0) {
-			    ConnAckMessage okResp = new ConnAckMessage();
-			    okResp.setReturnCode(ConnAckMessage.SERVER_UNAVAILABLE);
-			    session.write(okResp);
-			    session.close(false);
-			    return;
-		    }
-	    }
-
-	    // put client online
-	    OnlineStateRepository.put(msg.getClientID());
-
         //if an old client with the same ID already exists close its session.
         if (m_clientIDs.containsKey(msg.getClientID())) {
             LOG.info("Found an existing connection with same client ID <{}>, forcing to close", msg.getClientID());
@@ -181,13 +158,37 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
             if (msg.isPasswordFlag()) {
                 pwd = msg.getPassword();
             }
-            if (!m_authenticator.checkValid(msg.getUsername(), pwd)) {
-                ConnAckMessage okResp = new ConnAckMessage();
+	        //这里的username是业务方传过来的token。
+	        if (!m_authenticator.checkValid(msg.getUsername(), pwd, msg.getClientID())) {
+		        ConnAckMessage okResp = new ConnAckMessage();
                 okResp.setReturnCode(ConnAckMessage.BAD_USERNAME_OR_PASSWORD);
                 session.write(okResp);
                 return;
             }
         }
+
+	    //处理不允许多终端登录的场景的策略。1:kick,2:prevent
+	    //如果该域下同一个账号多终端登录的策略是kick得话
+	    int mutiClientAllowable = OnlineStateRepository.getMutiClientAllowable(msg.getClientID());
+	    if (1 == mutiClientAllowable) {
+		    Set<Object> members = OnlineStateRepository.get(msg.getClientID());
+		    for (Object clientID : members) {
+			    publishForConnectConflict(clientID.toString());
+		    }
+	    } else if (2 == mutiClientAllowable) {
+		    //如果该域下同一个账号多终端登录的策略是prevent
+		    Set<Object> members = OnlineStateRepository.get(msg.getClientID());
+		    if (members.size() > 0) {
+			    ConnAckMessage okResp = new ConnAckMessage();
+			    okResp.setReturnCode(ConnAckMessage.SERVER_UNAVAILABLE);
+			    session.write(okResp);
+			    session.close(false);
+			    return;
+		    }
+	    }
+
+	    // put client online
+	    OnlineStateRepository.put(msg.getClientID());
 
         subscriptions.activate(msg.getClientID());
 
@@ -565,7 +566,7 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
         for (String topic : topics) {
             subscriptions.removeSubscription(topic, clientID);
 
-	        TopicRouterRepository.cleanRouteByTopic(topic);
+	        TopicRouterRepository.cleanRouteTopicNode(topic);
         }
         //ack the client
         UnsubAckMessage ackMessage = new UnsubAckMessage();

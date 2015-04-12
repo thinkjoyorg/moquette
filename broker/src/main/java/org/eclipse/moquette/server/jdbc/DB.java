@@ -46,7 +46,7 @@ public final class DB {
 		ResultSet rs = null;
 		try {
 			connection = getConnection();
-			String sql = "select account,password from im_area_account aa where aa.status != -1";
+			String sql = "select account,password from im_acc_area aa where aa.status != -1";
 			ps = connection.prepareStatement(sql);
 			rs = ps.executeQuery();
 			while (rs.next()) {
@@ -67,7 +67,7 @@ public final class DB {
 		ResultSet rs = null;
 		try {
 			connection = getConnection();
-			String sql = "select a.account,r.kickOrPrevent from `im_area_account` a inner join `im_area_acc_rule` r on a.`id` = r.`areaAccountId` where a.`status` != -1";
+			String sql = "select a.account,r.kickOrPrevent from `im_acc_area` a inner join `im_acc_area_rule` r on a.`id` = r.`areaAccountId` where a.`status` != -1";
 			ps = connection.prepareStatement(sql);
 			rs = ps.executeQuery();
 			while (rs.next()) {

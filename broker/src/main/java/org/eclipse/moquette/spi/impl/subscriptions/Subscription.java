@@ -16,6 +16,7 @@
 package org.eclipse.moquette.spi.impl.subscriptions;
 
 import java.io.Serializable;
+
 import org.eclipse.moquette.proto.messages.AbstractMessage.QOSType;
 
 /**

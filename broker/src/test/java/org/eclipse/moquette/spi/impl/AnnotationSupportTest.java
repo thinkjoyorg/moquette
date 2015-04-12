@@ -18,9 +18,10 @@ package org.eclipse.moquette.spi.impl;
 import org.eclipse.moquette.proto.messages.ConnAckMessage;
 import org.eclipse.moquette.proto.messages.ConnectMessage;
 import org.eclipse.moquette.server.ServerChannel;
-import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
+
+import static org.junit.Assert.assertTrue;
 
 /**
  *
@@ -28,18 +29,9 @@ import org.junit.Test;
  */
 public class AnnotationSupportTest {
     
-    class SimplyAnnotatedFixture {
-        
-        @MQTTMessage(message = ConnectMessage.class)
-        void methodToBeDispatched(ServerChannel session, ConnectMessage msg) {
-            System.out.println("Just a sample method name");
-            methodInvoked = true;
-        }
-    }
-    
     SimplyAnnotatedFixture annotationTarget = new SimplyAnnotatedFixture();
     boolean methodInvoked;
-    
+
     @Before
     public void setUp() {
         methodInvoked = false;
@@ -50,8 +42,8 @@ public class AnnotationSupportTest {
         AnnotationSupport annHelper = new AnnotationSupport();
         annHelper.processAnnotations(annotationTarget);
         annHelper.dispatch(null, new ConnectMessage());
-        
-        //Verify
+
+	    //Verify
         assertTrue(methodInvoked);
     }
     
@@ -61,4 +53,13 @@ public class AnnotationSupportTest {
         annHelper.processAnnotations(annotationTarget);
         annHelper.dispatch(null, new ConnAckMessage());
     }
+
+	class SimplyAnnotatedFixture {
+
+		@MQTTMessage(message = ConnectMessage.class)
+		void methodToBeDispatched(ServerChannel session, ConnectMessage msg) {
+			System.out.println("Just a sample method name");
+			methodInvoked = true;
+		}
+	}
 }

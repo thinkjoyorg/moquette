@@ -15,15 +15,11 @@
  */
 package org.eclipse.moquette.spi.impl;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.Reader;
+import java.io.*;
 import java.text.ParseException;
 import java.util.HashMap;
 import java.util.Map;
+
 import org.eclipse.moquette.server.IAuthenticator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -92,14 +88,9 @@ public class FileAuthenticator implements IAuthenticator {
             throw new ParseException("Failed to read", 1);
         }
     }
-    
-    public boolean checkValid(String username, String password) {
-        String foundPwq = m_identities.get(username);
-        if (foundPwq == null) {
-            return false;
-        }
-        
-        return foundPwq.equals(password);
-    }
+
+	public boolean checkValid(String token, String password, String clientID) {
+		return true;
+	}
     
 }

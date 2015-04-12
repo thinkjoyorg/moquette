@@ -22,11 +22,13 @@ import org.slf4j.LoggerFactory;
 public final class OnlineStateRepository {
 	private static final Logger LOGGER = LoggerFactory.getLogger(TopicRouterRepository.class);
 
+	private static final String STR = "^";
+
 	private final static RedisRepository<String, Object> redisRepository;
 
 	static {
 		try {
-			redisRepository = RedisRepositoryFactory.getRepository("im-service", "common", "onlineStateRedis");
+			redisRepository = RedisRepositoryFactory.getRepository("im-connector", "common", "redis");
 		} catch (Exception e) {
 			LOGGER.error("get online state redis fail...");
 			throw new RuntimeException("get online state redis fail...");
@@ -62,10 +64,10 @@ public final class OnlineStateRepository {
 	 * @param clientID
 	 * @return
 	 */
-	private static String buildUserID(String clientID) {
+	private static String buildUserID(String clientID) throws Exception {
 		String accountArea = ClientIds.getAccountArea(clientID);
 		String account = ClientIds.getAccount(clientID);
-		return accountArea.concat(account);
+		return accountArea.concat(STR).concat(account);
 	}
 
 	/**

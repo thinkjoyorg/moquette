@@ -53,7 +53,6 @@ class ConfigurationParser {
 	}
 
 	private void createDefaults() {
-		m_properties.put(Constants.NODEID_PROPERTY_NAME, Integer.toString(Constants.NODEID));
 		m_properties.put(Constants.PORT_PROPERTY_NAME, Integer.toString(Constants.PORT));
 		m_properties.put(Constants.HOST_PROPERTY_NAME, Constants.HOST);
 		m_properties.put(Constants.WEB_SOCKET_PORT_PROPERTY_NAME, Integer.toString(Constants.WEBSOCKET_PORT));

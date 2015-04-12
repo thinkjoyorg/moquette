@@ -1,5 +1,9 @@
 package org.eclipse.moquette.spi.impl.thinkjoy;
 
+import java.util.Objects;
+
+import cn.thinkjoy.im.common.ClientIds;
+import org.eclipse.moquette.commons.Constants;
 import org.eclipse.moquette.server.IAuthenticator;
 
 /**
@@ -11,15 +15,20 @@ import org.eclipse.moquette.server.IAuthenticator;
 
 public class AreaAuthenticator implements IAuthenticator {
 	@Override
-	public boolean checkValid(String username, String password) {
-//		Jedis resource = RedisPool.getPool().getResource();
-//		String pwd = resource.hget(Constants.KEY_AREA_ACCOUNT, username);
-//		RedisPool.getPool().returnResource(resource);
-//		if (Objects.equals(pwd, password)) {
-//			return true;
-//		} else {
-//			return false;
-//		}
-		return true;
+	public boolean checkValid(String token, String password, String clientID) {
+
+		String accountArea = null;
+		try {
+			accountArea = ClientIds.getAccountArea(clientID);
+		} catch (Exception e) {
+			throw new RuntimeException(e.getMessage());
+		}
+		Object pwd = AccountRepository.get(Constants.KEY_AREA_ACCOUNT, accountArea);
+		if (null != pwd && Objects.equals(pwd.toString(), password)) {
+			//TODO 必须再进行token的认证
+			return true;
+		} else {
+			return false;
+		}
 	}
 }

@@ -15,9 +15,9 @@
  */
 package org.eclipse.moquette.spi.impl.events;
 
-import org.eclipse.moquette.proto.messages.AbstractMessage.QOSType;
-
 import java.nio.ByteBuffer;
+
+import org.eclipse.moquette.proto.messages.AbstractMessage.QOSType;
 
 /**
  *

@@ -19,7 +19,7 @@ public final class AccountRepository {
 
 	static {
 		try {
-			redisRepository = RedisRepositoryFactory.getRepository("im-service", "common", "areaAccountRedis");
+			redisRepository = RedisRepositoryFactory.getRepository("im-connector", "common", "redis");
 		} catch (Exception e) {
 			LOGGER.error("get area account redis fail...");
 			throw new RuntimeException("get area account redis fail...");

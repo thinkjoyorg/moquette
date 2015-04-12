@@ -19,13 +19,10 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.StatusCode;
-import org.eclipse.jetty.websocket.api.annotations.OnWebSocketClose;
-import org.eclipse.jetty.websocket.api.annotations.OnWebSocketConnect;
-import org.eclipse.jetty.websocket.api.annotations.OnWebSocketError;
-import org.eclipse.jetty.websocket.api.annotations.OnWebSocketMessage;
-import org.eclipse.jetty.websocket.api.annotations.WebSocket;
+import org.eclipse.jetty.websocket.api.annotations.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,12 +34,10 @@ import org.slf4j.LoggerFactory;
 public class MQTTWebSocket {
     
     private static final Logger LOG = LoggerFactory.getLogger(MQTTWebSocket.class);
-    
-    private Session session;
-    
     private final CountDownLatch connectSentLatch;
-    
-    public MQTTWebSocket() {
+	private Session session;
+
+	public MQTTWebSocket() {
         this.connectSentLatch = new CountDownLatch(1);
     }
     

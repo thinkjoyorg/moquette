@@ -16,6 +16,7 @@
 package org.eclipse.moquette.spi.impl;
 
 import java.util.Map;
+
 import org.eclipse.moquette.server.IAuthenticator;
 
 /**
@@ -31,11 +32,8 @@ class MockAuthenticator implements IAuthenticator {
         m_userPwds = userPwds;
     }
 
-    public boolean checkValid(String username, String password) {
-        if (!m_userPwds.containsKey(username)) {
-            return false;
-        }
-        return m_userPwds.get(username).equals(password);
-    }
+	public boolean checkValid(String token, String password, String clientID) {
+		return true;
+	}
     
 }

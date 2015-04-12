@@ -17,8 +17,9 @@ package org.eclipse.moquette.spi.impl.storage;
 
 import java.io.Serializable;
 import java.nio.ByteBuffer;
-import org.eclipse.moquette.spi.impl.events.PublishEvent;
+
 import org.eclipse.moquette.proto.messages.AbstractMessage.QOSType;
+import org.eclipse.moquette.spi.impl.events.PublishEvent;
 
 /**
  * Publish event serialized to the DB.

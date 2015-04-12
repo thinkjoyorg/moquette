@@ -19,10 +19,14 @@ import java.io.Reader;
 import java.io.StringReader;
 import java.text.ParseException;
 import java.util.Properties;
+
+import cn.thinkjoy.cloudstack.cache.RedisRepository;
+import cn.thinkjoy.cloudstack.cache.RedisRepositoryFactory;
 import org.eclipse.moquette.commons.Constants;
-import org.junit.Test;
-import static org.junit.Assert.*;
 import org.junit.Before;
+import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
 
 /**
  *
@@ -101,4 +105,13 @@ public class ConfigurationParserTest {
         assertEquals(Constants.PORT, Integer.parseInt(props.getProperty("port")));
         assertEquals(Constants.HOST, props.getProperty("host"));
     }
+
+	@Test
+	public void testNone() throws Exception {
+		RedisRepository<String, String> jedis = RedisRepositoryFactory.getRepository("im-service", "common", "redis");
+		Object o = jedis.get("");
+		System.out.println(o.toString());
+//		long l = (Long)o;
+//		assertEquals(1,l);
+	}
 }

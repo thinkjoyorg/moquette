@@ -22,5 +22,5 @@ package org.eclipse.moquette.server;
  */
 public interface IAuthenticator {
 
-    boolean checkValid(String username, String password);
+	boolean checkValid(String token, String password, String clientID);
 }

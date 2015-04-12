@@ -21,31 +21,51 @@ public final class TopicRouterRepository {
 
 	static {
 		try {
-			redisRepository = RedisRepositoryFactory.getRepository("im-service", "common", "topicRouterRedis");
+			redisRepository = RedisRepositoryFactory.getRepository("im-connector", "common", "redis");
 		} catch (Exception e) {
 			LOGGER.error("get topic router redis fail...");
 			throw new RuntimeException("get topic router redis fail...");
 		}
 	}
 
-	//add topic ---> Node router to redis
 	public static final void addRoute(String topic) {
 		try {
 			String nodeId = CloudContextFactory.getCloudContext().getId();
 			redisRepository.sAdd(topic, nodeId);
 		} catch (Exception e) {
-			LOGGER.error(String.format("add [topic] %s:%s fail.", topic));
-			throw new MQTTException("add [topic] fail:" + topic);
+			LOGGER.error(String.format("add [topic router] %s fail.", topic));
+			throw new MQTTException("add [topic router] fail:" + topic);
 		}
 	}
 
-	//remove topic ---> node route from reids.
+	/**
+	 * 当客户端断开连接时，清除该节点上所有客户端所订阅的topic
+	 *
+	 * @param topic
+	 */
 	public static final void cleanRouteByTopic(String topic) {
 		try {
-			redisRepository.del(topic);
+			String nodeId = CloudContextFactory.getCloudContext().getId();
+			redisRepository.sRem(topic, nodeId);
 		} catch (Exception e) {
 			LOGGER.error(String.format("del [topic] %s fail.", topic));
 			throw new MQTTException("del [topic] fail:" + topic);
 		}
+	}
+
+	/**
+	 * 当客户端退订时，清除客户端所退订的topic信息
+	 *
+	 * @param topic
+	 */
+	public static final void cleanRouteTopicNode(String topic) {
+		try {
+			String nodeId = CloudContextFactory.getCloudContext().getId();
+			redisRepository.sRem(topic, nodeId);
+		} catch (Exception e) {
+			LOGGER.error(String.format("del [topic] %s fail.", topic));
+			throw new MQTTException("del [topic] fail:" + topic);
+		}
+
 	}
 }

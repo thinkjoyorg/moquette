@@ -16,11 +16,7 @@
 package org.eclipse.moquette.testclient;
 
 import io.netty.bootstrap.Bootstrap;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelInitializer;
-import io.netty.channel.ChannelOption;
-import io.netty.channel.ChannelPipeline;
-import io.netty.channel.EventLoopGroup;
+import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
@@ -39,15 +35,12 @@ import org.slf4j.LoggerFactory;
  */
 public class Client {
     
-    public static interface ICallback {
-        void call(AbstractMessage msg);
-    }
-    
     private static final Logger LOG = LoggerFactory.getLogger(Client.class);
     final ClientNettyMQTTHandler handler = new ClientNettyMQTTHandler();
     EventLoopGroup workerGroup;
     Channel m_channel;
-    private boolean m_connectionLost = false;
+	ICallback callback;
+	private boolean m_connectionLost = false;
     
     public Client(String host) {
         this(host, Constants.PORT);
@@ -82,28 +75,27 @@ public class Client {
         }
     }
     
-    ICallback callback;
     public void setCallback(ICallback callback) {
         this.callback = callback;
     }
-    
+
     public void sendMessage(AbstractMessage msg) {
         m_channel.writeAndFlush(msg);
     }
 
-    void messageReceived(AbstractMessage msg) {
+	void messageReceived(AbstractMessage msg) {
         LOG.info("Received message " + msg);
         if (this.callback != null) {
             this.callback.call(msg);
         }
     }
-    
-    void setConnectionLost(boolean status) {
+
+	public boolean isConnectionLost() {
+		return m_connectionLost;
+	}
+
+	void setConnectionLost(boolean status) {
         m_connectionLost = status;
-    }
-    
-    public boolean isConnectionLost() {
-        return m_connectionLost;
     }
     
     public void close() throws InterruptedException {
@@ -114,4 +106,8 @@ public class Client {
         }
         workerGroup.shutdownGracefully();
     }
+
+	public static interface ICallback {
+		void call(AbstractMessage msg);
+	}
 }

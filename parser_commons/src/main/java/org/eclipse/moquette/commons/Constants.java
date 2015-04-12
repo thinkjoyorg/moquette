@@ -21,16 +21,14 @@ import java.io.File;
  * Contains some useful constants.
  */
 public class Constants {
-    public static final int PORT = 1883;
-	public static final int WEBSOCKET_PORT = 8080;
+	public static final int PORT = 1884;
+	public static final int WEBSOCKET_PORT = 8088;
 	public static final String HOST = "0.0.0.0";
-	public static final int NODEID = 1;
 	public static final int DEFAULT_CONNECT_TIMEOUT = 60;
 	public static final String DEFAULT_MOQUETTE_STORE_MAP_DB_FILENAME = "moquette_store.mapdb";
 	public static final String DEFAULT_PERSISTENT_PATH = System.getProperty("user.home") + File.separator + DEFAULT_MOQUETTE_STORE_MAP_DB_FILENAME;
 	public static final String PERSISTENT_STORE_PROPERTY_NAME = "persistent_store";
 	public static final String PASSWORD_FILE_PROPERTY_NAME = "password_file";
-	public static final String NODEID_PROPERTY_NAME = "id";
 	public static final String PORT_PROPERTY_NAME = "port";
 	public static final String HOST_PROPERTY_NAME = "host";
 	public static final String WEB_SOCKET_PORT_PROPERTY_NAME = "websocket_port";

@@ -43,7 +43,6 @@ import org.eclipse.moquette.commons.Constants;
 import org.eclipse.moquette.parser.netty.MQTTDecoder;
 import org.eclipse.moquette.parser.netty.MQTTEncoder;
 import org.eclipse.moquette.server.ServerAcceptor;
-import org.eclipse.moquette.server.cluster.Node;
 import org.eclipse.moquette.server.netty.metrics.MessageMetrics;
 import org.eclipse.moquette.server.netty.metrics.MessageMetricsCollector;
 import org.eclipse.moquette.server.netty.metrics.MessageMetricsHandler;
@@ -102,8 +101,6 @@ public class NettyAcceptor implements ServerAcceptor {
 	    final NettyMQTTHandler handler = new NettyMQTTHandler();
 	    String host = props.getProperty(Constants.HOST_PROPERTY_NAME);
 	    int port = Integer.parseInt(props.getProperty(Constants.PORT_PROPERTY_NAME));
-	    int nodeId = Integer.parseInt(props.getProperty(Constants.NODEID_PROPERTY_NAME));
-	    handler.setBrokerNode(new Node(nodeId, host, port));
 	    handler.setMessaging(messaging);
 	    initFactory(host, port, new PipelineInitializer() {
 		    @Override
@@ -129,11 +126,8 @@ public class NettyAcceptor implements ServerAcceptor {
         int port = Integer.parseInt(webSocketPortProp);
 
 	    final NettyMQTTHandler handler = new NettyMQTTHandler();
-	    int nodeId = Integer.parseInt(props.getProperty(Constants.NODEID_PROPERTY_NAME));
 	    String host = props.getProperty(Constants.HOST_PROPERTY_NAME);
-	    handler.setBrokerNode(new Node(nodeId, host, port));
 	    handler.setMessaging(messaging);
-
 	    initFactory(host, port, new PipelineInitializer() {
 		    @Override
 		    void init(ChannelPipeline pipeline) {
@@ -187,8 +181,6 @@ public class NettyAcceptor implements ServerAcceptor {
 		String host = props.getProperty(Constants.HOST_PROPERTY_NAME);
 
         final NettyMQTTHandler handler = new NettyMQTTHandler();
-		int nodeId = Integer.parseInt(props.getProperty(Constants.NODEID_PROPERTY_NAME));
-		handler.setBrokerNode(new Node(nodeId, host, sslPort));
 		handler.setMessaging(messaging);
         initFactory(host, sslPort, new PipelineInitializer() {
             @Override

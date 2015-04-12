@@ -17,6 +17,7 @@ package org.eclipse.moquette.server;
 
 import java.io.IOException;
 import java.util.Properties;
+
 import org.eclipse.moquette.spi.IMessaging;
 
 /**
