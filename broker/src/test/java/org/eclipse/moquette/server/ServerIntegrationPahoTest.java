@@ -60,11 +60,11 @@ public class ServerIntegrationPahoTest {
 
     @Before
     public void setUp() throws Exception {
-	    File dbFile = new File(org.eclipse.moquette.commons.Constants.DEFAULT_MOQUETTE_STORE_MAP_DB_FILENAME);
-	    assertFalse(String.format("The DB storagefile %s already exists", org.eclipse.moquette.commons.Constants.DEFAULT_MOQUETTE_STORE_MAP_DB_FILENAME), dbFile.exists());
+//	    File dbFile = new File(org.eclipse.moquette.commons.Constants.DEFAULT_MOQUETTE_STORE_MAP_DB_FILENAME);
+	    //assertFalse(String.format("The DB storagefile %s already exists", org.eclipse.moquette.commons.Constants.DEFAULT_MOQUETTE_STORE_MAP_DB_FILENAME), dbFile.exists());
 
 	    jedis = RedisRepositoryFactory.getRepository("im-service", "common", "redis");
-	    startServer();
+//	    startServer();
 
 	    String clientID = ClientIds.generateClientId("zhiliao", "gbdai", ClientIds.PlatformType.Android);
 
@@ -499,6 +499,23 @@ public class ServerIntegrationPahoTest {
 		options.setPassword("1111111".toCharArray());
 		aClient.connect(options);
 	}
+
+	@Test
+	public void testLostConnection() throws Exception {
+//		IMqttClient anotherClient = new MqttClient("tcp://localhost:1884", "TestClientPUB1", s_pubDataStore);
+//		anotherClient.setCallback(m_callback);
+		MqttConnectOptions options = new MqttConnectOptions();
+		options.setKeepAliveInterval(30);
+		m_client.connect(options);
+		m_client.subscribe("/topic111");
+		System.out.println("1a");
+		m_client.disconnect();
+
+//		m_client.connect(options);
+//		Thread.sleep(50000);
+
+	}
+
 
 	@Test
 	public void testNone() throws Exception {

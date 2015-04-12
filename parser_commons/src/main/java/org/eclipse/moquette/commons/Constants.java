@@ -21,7 +21,7 @@ import java.io.File;
  * Contains some useful constants.
  */
 public class Constants {
-	public static final int PORT = 1884;
+	public static final int PORT = 1883;
 	public static final int WEBSOCKET_PORT = 8088;
 	public static final String HOST = "0.0.0.0";
 	public static final int DEFAULT_CONNECT_TIMEOUT = 60;
@@ -38,9 +38,6 @@ public class Constants {
 	public static final String KEY_MANAGER_PASSWORD_PROPERTY_NAME = "key_manager_password";
 
 	///////////////////////// Redis ///////////////////
-
-	/*根据此Key,从redis中获取mqtt集群中可用的节点列表*/
-	public static final String KEY_NODE_LIST = "node_list";
 
 	/* 此key是存储的允许多终端登录前缀 */
 	public static final String KEY_MUTI_CLIENT_ALLOWABLE = "muti_client_allowable";

@@ -61,6 +61,7 @@ class TestCallback implements MqttCallback {
 
         public void connectionLost(Throwable cause) {
             //To change body of implemented methods use File | Settings | File Templates.
+	        System.out.println("lost connection");
         }
 
         public void messageArrived(String topic, MqttMessage message) throws Exception {
