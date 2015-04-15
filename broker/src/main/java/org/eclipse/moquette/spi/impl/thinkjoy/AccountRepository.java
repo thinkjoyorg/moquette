@@ -15,7 +15,7 @@ import org.slf4j.LoggerFactory;
 public final class AccountRepository {
 	private static final Logger LOGGER = LoggerFactory.getLogger(TopicRouterRepository.class);
 
-	private final static RedisRepository<String, Object> redisRepository;
+	private final static RedisRepository<String, String> redisRepository;
 
 	static {
 		try {
@@ -30,8 +30,8 @@ public final class AccountRepository {
 		redisRepository.hSet(key, hKey, value);
 	}
 
-	public static final Object get(String key, String hKey) {
-		Object o = redisRepository.hGet(key, hKey);
-		return o;
+	public static final String get(String key, String hKey) {
+		String res = redisRepository.hGet(key, hKey);
+		return res;
 	}
 }

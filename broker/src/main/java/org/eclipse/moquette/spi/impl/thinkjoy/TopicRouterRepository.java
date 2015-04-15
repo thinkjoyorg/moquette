@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory;
 public final class TopicRouterRepository {
 	private static final Logger LOGGER = LoggerFactory.getLogger(TopicRouterRepository.class);
 
-	private final static RedisRepository<String, Object> redisRepository;
+	private final static RedisRepository<String, String> redisRepository;
 
 	static {
 		try {

@@ -171,13 +171,13 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 	    //如果该域下同一个账号多终端登录的策略是kick得话
 	    int mutiClientAllowable = OnlineStateRepository.getMutiClientAllowable(msg.getClientID());
 	    if (1 == mutiClientAllowable) {
-		    Set<Object> members = OnlineStateRepository.get(msg.getClientID());
-		    for (Object clientID : members) {
-			    publishForConnectConflict(clientID.toString());
+		    Set<String> members = OnlineStateRepository.get(msg.getClientID());
+		    for (String clientID : members) {
+			    publishForConnectConflict(clientID);
 		    }
 	    } else if (2 == mutiClientAllowable) {
 		    //如果该域下同一个账号多终端登录的策略是prevent
-		    Set<Object> members = OnlineStateRepository.get(msg.getClientID());
+		    Set<String> members = OnlineStateRepository.get(msg.getClientID());
 		    if (members.size() > 0) {
 			    ConnAckMessage okResp = new ConnAckMessage();
 			    okResp.setReturnCode(ConnAckMessage.SERVER_UNAVAILABLE);
@@ -532,8 +532,10 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 		String clientID = evt.clientID;
 		//如果丢失连接必须也要清理客户端信息。
 		Set<Subscription> subscription = m_sessionsStore.getSubscriptionById(clientID);
-		for (Subscription s : subscription) {
-			TopicRouterRepository.cleanRouteByTopic(s.getTopicFilter());
+		if (subscription != null) {
+			for (Subscription s : subscription) {
+				TopicRouterRepository.cleanRouteByTopic(s.getTopicFilter());
+			}
 		}
 		//clear onlineState
 		OnlineStateRepository.remove(clientID);

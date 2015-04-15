@@ -23,8 +23,8 @@ public class AreaAuthenticator implements IAuthenticator {
 		} catch (Exception e) {
 			throw new RuntimeException(e.getMessage());
 		}
-		Object pwd = AccountRepository.get(Constants.KEY_AREA_ACCOUNT, accountArea);
-		if (null != pwd && Objects.equals(pwd.toString(), password)) {
+		String pwd = AccountRepository.get(Constants.KEY_AREA_ACCOUNT, accountArea);
+		if (null != pwd && Objects.equals(pwd, password)) {
 			//TODO 必须再进行token的认证
 			return true;
 		} else {

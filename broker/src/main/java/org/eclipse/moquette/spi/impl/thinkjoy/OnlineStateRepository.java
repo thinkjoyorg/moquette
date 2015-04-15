@@ -24,7 +24,7 @@ public final class OnlineStateRepository {
 
 	private static final String STR = "^";
 
-	private final static RedisRepository<String, Object> redisRepository;
+	private final static RedisRepository<String, String> redisRepository;
 
 	static {
 		try {
@@ -78,9 +78,9 @@ public final class OnlineStateRepository {
 	public static final void remove(String clientID) {
 		try {
 			String userID = buildUserID(clientID);
-			Set<Object> members = redisRepository.sMembers(userID);
-			for (Object member : members) {
-				if (clientID.equals(member.toString())) {
+			Set<String> members = redisRepository.sMembers(userID);
+			for (String member : members) {
+				if (clientID.equals(member)) {
 					redisRepository.sRem(userID, member);
 				}
 			}
@@ -90,10 +90,10 @@ public final class OnlineStateRepository {
 		}
 	}
 
-	public static final Set<Object> get(String clientID) {
+	public static final Set<String> get(String clientID) {
 		try {
 			String userID = buildUserID(clientID);
-			Set<Object> members = redisRepository.sMembers(userID);
+			Set<String> members = redisRepository.sMembers(userID);
 			if (members.size() > 0) {
 				return members;
 			} else {
@@ -109,8 +109,8 @@ public final class OnlineStateRepository {
 	public static final int getMutiClientAllowable(String clientID) {
 		try {
 			String accountArea = ClientIds.getAccountArea(clientID);
-			Optional<Object> kickOrPrevent = Optional.of(AccountRepository.get(Constants.KEY_MUTI_CLIENT_ALLOWABLE, accountArea));
-			return Integer.parseInt(kickOrPrevent.get().toString());
+			Optional<String> kickOrPrevent = Optional.of(AccountRepository.get(Constants.KEY_MUTI_CLIENT_ALLOWABLE, accountArea));
+			return Integer.parseInt(kickOrPrevent.get());
 		} catch (Exception e) {
 			LOGGER.error(String.format("query [mutiClientAllowable] %s fail.", clientID));
 			throw new MQTTException("query [mutiClientAllowable] fail:" + clientID);
