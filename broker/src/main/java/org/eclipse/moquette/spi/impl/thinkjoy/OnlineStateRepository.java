@@ -22,7 +22,7 @@ import org.slf4j.LoggerFactory;
 public final class OnlineStateRepository {
 	private static final Logger LOGGER = LoggerFactory.getLogger(TopicRouterRepository.class);
 
-	private static final String STR = "^";
+	private static final String STR = "_";
 
 	private final static RedisRepository<String, String> redisRepository;
 
@@ -59,7 +59,7 @@ public final class OnlineStateRepository {
 	 * userID = accountArea+account
 	 * e.g : accountArea = zhiliao
 	 * account = testuser
-	 * userID = zhiliaotestuser
+	 * userID = zhiliao_testuser
 	 *
 	 * @param clientID
 	 * @return
@@ -67,7 +67,10 @@ public final class OnlineStateRepository {
 	private static String buildUserID(String clientID) throws Exception {
 		String accountArea = ClientIds.getAccountArea(clientID);
 		String account = ClientIds.getAccount(clientID);
-		return accountArea.concat(STR).concat(account);
+		StringBuilder builder = new StringBuilder(accountArea);
+		builder.append(STR);
+		builder.append(account);
+		return builder.toString();
 	}
 
 	/**
@@ -79,9 +82,11 @@ public final class OnlineStateRepository {
 		try {
 			String userID = buildUserID(clientID);
 			Set<String> members = redisRepository.sMembers(userID);
-			for (String member : members) {
-				if (clientID.equals(member)) {
-					redisRepository.sRem(userID, member);
+			if (members.size() > 0) {
+				for (String member : members) {
+					if (clientID.equals(member)) {
+						redisRepository.sRem(userID, member);
+					}
 				}
 			}
 		} catch (Exception e) {
