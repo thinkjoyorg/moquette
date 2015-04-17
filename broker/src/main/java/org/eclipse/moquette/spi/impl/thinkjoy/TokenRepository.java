@@ -35,7 +35,7 @@ public final class TokenRepository {
 	 * @param token
 	 * @return
 	 */
-	public boolean authToken(String token) {
+	public static boolean authToken(String token) {
 		String result = redisRepository.get("token." + token);
 		return result == null ? false : true;
 	}
@@ -46,7 +46,7 @@ public final class TokenRepository {
 	 * @param token
 	 * @param ttl
 	 */
-	public void set(String token, long ttl) {
+	public static void set(String token, long ttl) {
 		redisRepository.set("token." + token, token, ttl, TimeUnit.SECONDS);
 	}
 }

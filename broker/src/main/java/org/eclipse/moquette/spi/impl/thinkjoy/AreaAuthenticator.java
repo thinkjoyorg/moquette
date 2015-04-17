@@ -2,9 +2,18 @@ package org.eclipse.moquette.spi.impl.thinkjoy;
 
 import java.util.Objects;
 
+import cn.thinkjoy.cloudstack.dynconfig.DynConfigClient;
+import cn.thinkjoy.cloudstack.dynconfig.DynConfigClientFactory;
 import cn.thinkjoy.im.common.ClientIds;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
+import com.squareup.okhttp.OkHttpClient;
+import com.squareup.okhttp.Request;
+import com.squareup.okhttp.Response;
 import org.eclipse.moquette.commons.Constants;
 import org.eclipse.moquette.server.IAuthenticator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * 创建人：xy
@@ -14,6 +23,8 @@ import org.eclipse.moquette.server.IAuthenticator;
  */
 
 public class AreaAuthenticator implements IAuthenticator {
+	private static final Logger LOGGER = LoggerFactory.getLogger(AreaAuthenticator.class);
+
 	@Override
 	public boolean checkValid(String token, String password, String clientID) {
 
@@ -21,14 +32,51 @@ public class AreaAuthenticator implements IAuthenticator {
 		try {
 			accountArea = ClientIds.getAccountArea(clientID);
 		} catch (Exception e) {
-			throw new RuntimeException(e.getMessage());
+			LOGGER.error(e.getMessage());
+			return false;
 		}
 		String pwd = AccountRepository.get(Constants.KEY_AREA_ACCOUNT, accountArea);
 		if (null != pwd && Objects.equals(pwd, password)) {
-			//TODO 必须再进行token的认证
-			return true;
-		} else {
-			return false;
+			if (authToken(token)) {
+				return true;
+			}
 		}
+		return false;
+	}
+
+	private boolean authToken(String token) {
+		boolean b = TokenRepository.authToken("token".concat(token));
+		if (!b) {
+			DynConfigClient client = DynConfigClientFactory.getClient();
+			client.init();
+
+			try {
+				String url = client.getConfig("im-service", "common", "httpTokenAuthURL");
+				String urlWithParam = new StringBuilder(url).append("?").append("token=").append(token).toString();
+				OkHttpClient httpClient = new OkHttpClient();
+				Request request = new Request.Builder()
+						.url(urlWithParam)
+						.build();
+				Response response = httpClient.newCall(request).execute();
+				String body = response.body().string();
+
+				/**
+				 * token认证协议：
+				 * {"state":"调用状态，1.成功，其他.失败","msg":"描述","dt":"时间戳","data":{"valid":"是否有效，true或false","ttl":"该token的生存时间们，单位是秒"}}
+				 */
+				JSONObject data = JSON.parseObject(body).getJSONObject("data");
+				String valid = data.getString("valid");
+				if ("true".equals(valid)) {
+					long ttl = data.getLong("ttl");
+					TokenRepository.set(token, ttl);
+					return true;
+				}
+			} catch (Exception e) {
+
+				return false;
+			}
+		}
+
+		return b;
 	}
 }
