@@ -17,14 +17,14 @@ import org.slf4j.LoggerFactory;
 public final class TopicRouterRepository {
 	private static final Logger LOGGER = LoggerFactory.getLogger(TopicRouterRepository.class);
 
-	private final static RedisRepository<String, String> redisRepository;
+	private static RedisRepository<String, String> redisRepository;
 
 	static {
 		try {
 			redisRepository = RedisRepositoryFactory.getRepository("im-connector", "common", "redis");
 		} catch (Exception e) {
-			LOGGER.error("get topic router redis fail...");
-			throw new RuntimeException("get topic router redis fail...");
+			LOGGER.error(e.getMessage());
+			System.exit(-1);
 		}
 	}
 

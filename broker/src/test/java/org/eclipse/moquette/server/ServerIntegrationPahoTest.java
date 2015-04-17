@@ -60,13 +60,13 @@ public class ServerIntegrationPahoTest {
 
     @Before
     public void setUp() throws Exception {
-//	    File dbFile = new File(org.eclipse.moquette.commons.Constants.DEFAULT_MOQUETTE_STORE_MAP_DB_FILENAME);
-	    //assertFalse(String.format("The DB storagefile %s already exists", org.eclipse.moquette.commons.Constants.DEFAULT_MOQUETTE_STORE_MAP_DB_FILENAME), dbFile.exists());
+	    File dbFile = new File(org.eclipse.moquette.commons.Constants.DEFAULT_MOQUETTE_STORE_MAP_DB_FILENAME);
+	    assertFalse(String.format("The DB storagefile %s already exists", org.eclipse.moquette.commons.Constants.DEFAULT_MOQUETTE_STORE_MAP_DB_FILENAME), dbFile.exists());
 
 	    jedis = RedisRepositoryFactory.getRepository("im-service", "common", "redis");
-//	    startServer();
+	    startServer();
 
-	    String clientID = ClientIds.generateClientId("zhiliao", "gbdai", ClientIds.PlatformType.Android);
+	    String clientID = ClientIds.generateClientId("zl", "gbdai", ClientIds.PlatformType.Android);
 
 	    m_client = new MqttClient("tcp://localhost:1883", clientID, s_dataStore);
 	    m_callback = new TestCallback();
@@ -407,7 +407,7 @@ public class ServerIntegrationPahoTest {
 //		LOG.info("*** testOnlineState ***");
 //		MqttConnectOptions options = new MqttConnectOptions();
 //		options.setCleanSession(true);
-//		String clientId = ClientIds.generateClientId("zhiliao", "gbdai", PlatformType.Android());
+//		String clientId = ClientIds.generateClientId("zl", "gbdai", PlatformType.Android());
 //		MqttClient client = new MqttClient("tcp://localhost:1883", clientId);
 //		client.connect(options);
 //		String accountArea = ClientIds.getAccountArea(clientId);
@@ -425,9 +425,9 @@ public class ServerIntegrationPahoTest {
 
 	@Test
 	public void testOnlineStateManager() throws Exception {
-//		String clientId1 = ClientIds.generateClientId("zhiliao", "gbdai", PlatformType.Android());
-//		String clientId2 = ClientIds.generateClientId("zhiliao", "gbdai", PlatformType.Android());
-//		String clientId3 = ClientIds.generateClientId("zhiliao", "gbdai", PlatformType.Android());
+//		String clientId1 = ClientIds.generateClientId("zl", "gbdai", PlatformType.Android());
+//		String clientId2 = ClientIds.generateClientId("zl", "gbdai", PlatformType.Android());
+//		String clientId3 = ClientIds.generateClientId("zl", "gbdai", PlatformType.Android());
 //		OnlineStateManager.put(clientId1);
 //		OnlineStateManager.put(clientId2);
 //		OnlineStateManager.put(clientId3);
@@ -438,8 +438,8 @@ public class ServerIntegrationPahoTest {
 //		OnlineStateManager.remove(clientId3);
 //		assertTrue(OnlineStateManager.get(clientId1).size() == 0);
 //
-//		String clientId4 = ClientIds.generateClientId("zhiliao", "xyzhang", PlatformType.Android());
-//		String clientId5 = ClientIds.generateClientId("xiaoyuanyun", "gbdai", PlatformType.Android());
+//		String clientId4 = ClientIds.generateClientId("zl", "xyzhang", PlatformType.Android());
+//		String clientId5 = ClientIds.generateClientId("xyy", "gbdai", PlatformType.Android());
 //
 //		assertTrue(1 == OnlineStateManager.getMutiClientAllowable(clientId4));
 //		assertTrue(2 == OnlineStateManager.getMutiClientAllowable(clientId5));
@@ -449,7 +449,7 @@ public class ServerIntegrationPahoTest {
 
 	@Test
 	public void testConnectConflict() throws Exception {
-		String anotherClientID = ClientIds.generateClientId("zhiliao", "gbdai", ClientIds.PlatformType.Android);
+		String anotherClientID = ClientIds.generateClientId("zl", "gbdai", ClientIds.PlatformType.Android);
 		m_client.connect();
 		m_client.subscribe(m_client.getClientId());
 		String tmpDir = System.getProperty("java.io.tmpdir");
@@ -464,8 +464,8 @@ public class ServerIntegrationPahoTest {
 
 	@Test(expected = MqttException.class)
 	public void testConnectionPrevent() throws Exception {
-		String anotherClientID = ClientIds.generateClientId("xiaoyuanyun", "xyzhang", ClientIds.PlatformType.Android);
-		String aClientID = ClientIds.generateClientId("xiaoyuanyun", "xyzhang", ClientIds.PlatformType.Android);
+		String anotherClientID = ClientIds.generateClientId("xyy", "xyzhang", ClientIds.PlatformType.Android);
+		String aClientID = ClientIds.generateClientId("xyy", "xyzhang", ClientIds.PlatformType.Android);
 		String tmpDir = System.getProperty("java.io.tmpdir");
 		MqttClientPersistence anotherStore = new MqttDefaultFilePersistence(tmpDir + File.separator + "anotherClient");
 		MqttClientPersistence aStore = new MqttDefaultFilePersistence(tmpDir + File.separator + "anotherClient");
@@ -478,26 +478,27 @@ public class ServerIntegrationPahoTest {
 
 	@Test
 	public void testAreaAuthicatorSUCCESS() throws Exception {
-		String aClientID = ClientIds.generateClientId("xiaoyuanyun", "xyzhang", ClientIds.PlatformType.Android);
+		String aClientID = ClientIds.generateClientId("xyy", "xyzhang", ClientIds.PlatformType.Android);
 		String tmpDir = System.getProperty("java.io.tmpdir");
 		MqttClientPersistence aStore = new MqttDefaultFilePersistence(tmpDir + File.separator + "anotherClient");
 		MqttClient aClient = new MqttClient("tcp://localhost:1883", aClientID, aStore);
 		MqttConnectOptions options = new MqttConnectOptions();
-		options.setUserName("xiaoyuanyun");
+		options.setUserName("xyy");
 		options.setPassword("111111".toCharArray());
 		aClient.connect(options);
 	}
 
 	@Test(expected = MqttException.class)
 	public void testAreaAuthicatorFail() throws Exception {
-		String aClientID = ClientIds.generateClientId("xiaoyuanyun", "xyzhang", ClientIds.PlatformType.Android);
+		String aClientID = ClientIds.generateClientId("xyy", "xyzhang", ClientIds.PlatformType.Android);
 		String tmpDir = System.getProperty("java.io.tmpdir");
 		MqttClientPersistence aStore = new MqttDefaultFilePersistence(tmpDir + File.separator + "anotherClient");
 		MqttClient aClient = new MqttClient("tcp://localhost:1883", aClientID, aStore);
 		MqttConnectOptions options = new MqttConnectOptions();
-		options.setUserName("xiaoyuanyun1");
+		options.setUserName("xyy");
 		options.setPassword("1111111".toCharArray());
 		aClient.connect(options);
+		System.out.printf("1");
 	}
 
 	@Test
@@ -519,7 +520,7 @@ public class ServerIntegrationPahoTest {
 
 	@Test
 	public void testNone() throws Exception {
-		String s = jedis.get("topicSeq^/user/xy^1");
-		System.out.printf(s);
+//		String s = jedis.get("topicSeq^/user/xy^1");
+		System.out.printf(ClientIds.generateClientId("zl", "gbdai", ClientIds.PlatformType.Android));
 	}
 }

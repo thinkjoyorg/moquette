@@ -13,16 +13,16 @@ import org.slf4j.LoggerFactory;
  */
 
 public final class AccountRepository {
-	private static final Logger LOGGER = LoggerFactory.getLogger(TopicRouterRepository.class);
+	private static final Logger LOGGER = LoggerFactory.getLogger(AccountRepository.class);
 
-	private final static RedisRepository<String, String> redisRepository;
+	private static RedisRepository<String, String> redisRepository;
 
 	static {
 		try {
 			redisRepository = RedisRepositoryFactory.getRepository("im-connector", "common", "redis");
 		} catch (Exception e) {
-			LOGGER.error("get area account redis fail...");
-			throw new RuntimeException("get area account redis fail...");
+			LOGGER.error(e.getMessage());
+			System.exit(-1);
 		}
 	}
 

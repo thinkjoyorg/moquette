@@ -539,7 +539,6 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 		}
 		//clear onlineState
 		OnlineStateRepository.remove(clientID);
-		//boolean cleanSession = (Boolean) evt.session.getAttribute(NettyChannel.ATTR_KEY_CLEANSESSION);
 
 		//if (cleanSession) {
 		cleanSession(clientID);

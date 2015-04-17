@@ -20,18 +20,18 @@ import org.slf4j.LoggerFactory;
  */
 
 public final class OnlineStateRepository {
-	private static final Logger LOGGER = LoggerFactory.getLogger(TopicRouterRepository.class);
+	private static final Logger LOGGER = LoggerFactory.getLogger(OnlineStateRepository.class);
 
 	private static final String STR = "_";
 
-	private final static RedisRepository<String, String> redisRepository;
+	private static RedisRepository<String, String> redisRepository;
 
 	static {
 		try {
 			redisRepository = RedisRepositoryFactory.getRepository("im-connector", "common", "redis");
 		} catch (Exception e) {
-			LOGGER.error("get online state redis fail...");
-			throw new RuntimeException("get online state redis fail...");
+			LOGGER.error(e.getMessage());
+			System.exit(-1);
 		}
 	}
 
