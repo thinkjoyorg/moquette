@@ -45,7 +45,7 @@ public class AreaAuthenticator implements IAuthenticator {
 	}
 
 	private boolean authToken(String token) {
-		boolean b = TokenRepository.authToken("token".concat(token));
+		boolean b = TokenRepository.authToken(token);
 		if (!b) {
 			DynConfigClient client = DynConfigClientFactory.getClient();
 			client.init();

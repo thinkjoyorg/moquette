@@ -56,6 +56,7 @@ public final class DB {
 			}
 		} catch (SQLException e) {
 			LOG.error("initAreaToRedis fail...");
+			LOG.error(e.getMessage());
 		} finally {
 			release(connection, ps, rs);
 		}
@@ -77,6 +78,7 @@ public final class DB {
 			}
 		} catch (SQLException e) {
 			LOG.error("initMutiClientAllowableToRedis fail...");
+			LOG.error(e.getMessage());
 		} finally {
 			release(connection, ps, rs);
 		}

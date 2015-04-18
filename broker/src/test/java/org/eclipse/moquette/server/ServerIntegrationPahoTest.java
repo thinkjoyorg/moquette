@@ -21,7 +21,6 @@ import java.util.Objects;
 import java.util.Properties;
 
 import cn.thinkjoy.cloudstack.cache.RedisRepository;
-import cn.thinkjoy.cloudstack.cache.RedisRepositoryFactory;
 import cn.thinkjoy.im.common.ClientIds;
 import org.eclipse.moquette.commons.Constants;
 import org.eclipse.paho.client.mqttv3.*;
@@ -60,17 +59,17 @@ public class ServerIntegrationPahoTest {
 
     @Before
     public void setUp() throws Exception {
-	    File dbFile = new File(org.eclipse.moquette.commons.Constants.DEFAULT_MOQUETTE_STORE_MAP_DB_FILENAME);
-	    assertFalse(String.format("The DB storagefile %s already exists", org.eclipse.moquette.commons.Constants.DEFAULT_MOQUETTE_STORE_MAP_DB_FILENAME), dbFile.exists());
-
-	    jedis = RedisRepositoryFactory.getRepository("im-service", "common", "redis");
-	    startServer();
-
-	    String clientID = ClientIds.generateClientId("zl", "gbdai", ClientIds.PlatformType.Android);
-
-	    m_client = new MqttClient("tcp://localhost:1883", clientID, s_dataStore);
-	    m_callback = new TestCallback();
-	    m_client.setCallback(m_callback);
+//	    File dbFile = new File(org.eclipse.moquette.commons.Constants.DEFAULT_MOQUETTE_STORE_MAP_DB_FILENAME);
+//	    assertFalse(String.format("The DB storagefile %s already exists", org.eclipse.moquette.commons.Constants.DEFAULT_MOQUETTE_STORE_MAP_DB_FILENAME), dbFile.exists());
+//
+//	    jedis = RedisRepositoryFactory.getRepository("im-service", "common", "redis");
+//	    startServer();
+//
+//	    String clientID = ClientIds.generateClientId("zl", "gbdai", ClientIds.PlatformType.Android);
+//
+//	    m_client = new MqttClient("tcp://localhost:1883", clientID, s_dataStore);
+//	    m_callback = new TestCallback();
+//	    m_client.setCallback(m_callback);
     }
 
     @After

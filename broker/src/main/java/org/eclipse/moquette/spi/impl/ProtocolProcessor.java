@@ -507,7 +507,7 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 
 	    Set<Subscription> subscription = m_sessionsStore.getSubscriptionById(clientID);
 	    for (Subscription s : subscription) {
-		    TopicRouterRepository.cleanRouteByTopic(s.getTopicFilter());
+		    TopicRouterRepository.cleanRouteTopicNode(s.getTopicFilter());
 	    }
 	    //clear onlineState
 	    OnlineStateRepository.remove(clientID);
@@ -534,7 +534,7 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 		Set<Subscription> subscription = m_sessionsStore.getSubscriptionById(clientID);
 		if (subscription != null) {
 			for (Subscription s : subscription) {
-				TopicRouterRepository.cleanRouteByTopic(s.getTopicFilter());
+				TopicRouterRepository.cleanRouteTopicNode(s.getTopicFilter());
 			}
 		}
 		//clear onlineState
