@@ -3,7 +3,6 @@ package org.eclipse.moquette.spi.impl.thinkjoy;
 import cn.thinkjoy.cloudstack.cache.RedisRepository;
 import cn.thinkjoy.cloudstack.cache.RedisRepositoryFactory;
 import cn.thinkjoy.cloudstack.context.CloudContextFactory;
-import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import org.eclipse.moquette.proto.MQTTException;
 import org.slf4j.Logger;
@@ -82,6 +81,6 @@ public final class TopicRouterRepository {
 	}
 
 	private final static String buildTopicCounterKey(String topic, String nodeId) {
-		return Joiner.on("-").join(topic, nodeId);
+		return new StringBuilder("topicNodeCounter").append(":").append(topic).append(nodeId).toString();
 	}
 }
