@@ -42,10 +42,6 @@ public class Constants {
 	/* 此key是存储的允许多终端登录前缀 */
 	public static final String KEY_MUTI_CLIENT_ALLOWABLE = "muti_client_allowable";
 
-	/////////////////// 重复登录消息 ///////////////////
-	/* 如果检测到有用户重复登录，并且该域下不允许重复登录，则给已经登录的用户发送登录冲突的消息，内容就是CONNECT_CONFLICT  */
-	public static final String M_CONNECT_CONFLICT = "CONNECT_CONFLICT";
-
 	//
 	public static final String KEY_AREA_ACCOUNT = "area_account";
 }

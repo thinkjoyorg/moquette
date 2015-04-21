@@ -3,10 +3,10 @@ package org.eclipse.moquette.spi.impl.thinkjoy;
 import cn.thinkjoy.cloudstack.cache.RedisRepository;
 import cn.thinkjoy.cloudstack.cache.RedisRepositoryFactory;
 import cn.thinkjoy.cloudstack.context.CloudContextFactory;
-import com.google.common.base.Strings;
 import org.eclipse.moquette.proto.MQTTException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 /**
  * 创建人：xy
@@ -23,29 +23,53 @@ public final class TopicRouterRepository {
 	static {
 		try {
 			redisRepository = RedisRepositoryFactory.getRepository("im-connector", "common", "redis");
+			redisRepository.getRedisTemplate().setEnableTransactionSupport(true);
+			redisRepository.getRedisTemplate().setValueSerializer(new StringRedisSerializer());
+
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage());
 			System.exit(-1);
 		}
 	}
 
-	public static final void addRoute(String topic) {
+	public static final void addRoute(final String topic) {
 		try {
-			String nodeId = CloudContextFactory.getCloudContext().getId();
-
-			redisRepository.getRedisTemplate().multi();
-
-			redisRepository.incr(buildTopicCounterKey(topic, nodeId), 1);
+			final String nodeId = CloudContextFactory.getCloudContext().getId();
+			final String key = buildTopicCounterKey(topic, nodeId);
+			redisRepository.incr(key, 1L);
 			redisRepository.sAdd(topic, nodeId);
-
-			redisRepository.getRedisTemplate().exec();
 			LOGGER.info("add [topic]:{} to [node]:{}", topic, nodeId);
 		} catch (Exception e) {
-			redisRepository.getRedisTemplate().discard();
 			LOGGER.error(String.format("add [topic router] %s fail.", topic));
 			LOGGER.error(e.getMessage());
 			throw new MQTTException("add [topic router] fail:" + topic);
 		}
+//		try {
+//			final String nodeId = CloudContextFactory.getCloudContext().getId();
+//			final String key = buildTopicCounterKey(topic, nodeId);
+//
+//			redisRepository.getRedisTemplate().execute(new SessionCallback<List<Object>>() {
+//				@Override
+//				public List<Object> execute(RedisOperations redisOperations) throws DataAccessException {
+//					try{
+//						redisOperations.multi();
+//						redisOperations.opsForValue().increment(key, 1L);
+//						redisOperations.opsForSet().add(topic, nodeId);
+//						return redisOperations.exec();
+//					}catch (Exception e){
+//						redisOperations.discard();
+//						LOGGER.error(e.getMessage());
+//						throw new MQTTException("add [topic router] fail:" + topic);
+//					}
+//				}
+//			});
+
+//			LOGGER.info("add [topic]:{} to [node]:{}", topic, nodeId);
+//		} catch (Exception e) {
+//			LOGGER.error(String.format("add [topic router] %s fail.", topic));
+//			LOGGER.error(e.getMessage());
+//			throw new MQTTException("add [topic router] fail:" + topic);
+//		}
 	}
 
 	/**
@@ -55,29 +79,55 @@ public final class TopicRouterRepository {
 	 *
 	 * @param topic
 	 */
-	public static final void cleanRouteTopicNode(String topic) {
+	public static final void cleanRouteTopicNode(final String topic) {
 		try {
-			String nodeId = CloudContextFactory.getCloudContext().getId();
+			final String nodeId = CloudContextFactory.getCloudContext().getId();
+			final String key = buildTopicCounterKey(topic, nodeId);
 
-			redisRepository.getRedisTemplate().multi();
-			String key = buildTopicCounterKey(topic, nodeId);
+//			redisRepository.getRedisTemplate().execute(new SessionCallback<List<Object>>() {
+//				@Override
+//				public List<Object> execute(RedisOperations redisOperations) throws DataAccessException {
+//					try {
+//
+//						Object val = redisOperations.opsForValue().get(key);
+//						redisOperations.multi();
+//
+//						if (null != val && Integer.parseInt(val.toString()) != 0) {
+//							redisOperations.opsForValue().increment(key, -1L);
+//							LOGGER.debug("decr counter [key]:{} , current [val]:{}", key, val);
+//						} else {
+//							if (redisOperations.opsForSet().isMember(topic, nodeId)) {
+//								redisOperations.opsForSet().remove(topic, nodeId);
+//								LOGGER.debug("del [topic]:{} on [node]:{}", topic, nodeId);
+//							}
+//						}
+//						return redisOperations.exec();
+//					} catch (Exception e) {
+//						redisOperations.discard();
+//						LOGGER.error(e.getMessage());
+//						throw new MQTTException("del [topic] fail:" + topic);
+//					}
+//				}
+//			});
 			String val = redisRepository.get(key);
-			if (!Strings.isNullOrEmpty(val) && Integer.parseInt(val) != 0) {
-				redisRepository.incr(key, -1);
-				LOGGER.info("decr [key]:{} , current [val]:{}", key, val);
+			if (null != val && Integer.parseInt(val.toString()) != 0) {
+				redisRepository.incr(key, -1L);
+				LOGGER.debug("decr counter [key]:{} , current [val]:{}", key, val);
 			} else {
-				redisRepository.sRem(topic, nodeId);
-				LOGGER.info("del [topic]:{} on [node]:{}", topic, nodeId);
+				if (redisRepository.sMembers(topic) != null && redisRepository.sMembers(topic).size() > 0) {
+					redisRepository.sRem(topic, nodeId);
+					LOGGER.debug("del [topic]:{} on [node]:{}", topic, nodeId);
+				}
 			}
-			redisRepository.getRedisTemplate().exec();
-
+//			if (redisRepository.sMembers(topic).size() > 0) {
+//				redisRepository.sRem(topic, nodeId);
+//			}
+			LOGGER.debug("del [topic]:{} on [node]:{}", topic, nodeId);
 		} catch (Exception e) {
-			redisRepository.getRedisTemplate().discard();
-			LOGGER.error(String.format("del [topic] %s fail.", topic));
+			LOGGER.error(String.format("clean [topic router] %s fail.", topic));
 			LOGGER.error(e.getMessage());
-			throw new MQTTException("del [topic] fail:" + topic);
+			throw new MQTTException("clean [topic router] fail:" + topic);
 		}
-
 	}
 
 	private final static String buildTopicCounterKey(String topic, String nodeId) {

@@ -17,13 +17,25 @@ package org.eclipse.moquette.spi.impl;
 
 import java.nio.ByteBuffer;
 import java.util.*;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
+import akka.actor.ActorRef;
+import akka.actor.ActorSelection;
+import akka.actor.ActorSystem;
+import akka.util.Timeout;
+import cn.thinkjoy.cloudstack.dynconfig.DynConfigClient;
+import cn.thinkjoy.cloudstack.dynconfig.DynConfigClientFactory;
+import cn.thinkjoy.cloudstack.dynconfig.IChangeListener;
+import cn.thinkjoy.cloudstack.dynconfig.domain.Configuration;
+import cn.thinkjoy.im.common.ClientIds;
 import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.dsl.Disruptor;
-import org.eclipse.moquette.commons.Constants;
+import com.typesafe.config.ConfigFactory;
+import org.eclipse.moquette.proto.MQTTException;
 import org.eclipse.moquette.proto.messages.*;
 import org.eclipse.moquette.proto.messages.AbstractMessage.QOSType;
 import org.eclipse.moquette.server.ConnectionDescriptor;
@@ -36,10 +48,13 @@ import org.eclipse.moquette.spi.ISessionsStore;
 import org.eclipse.moquette.spi.impl.events.*;
 import org.eclipse.moquette.spi.impl.subscriptions.Subscription;
 import org.eclipse.moquette.spi.impl.subscriptions.SubscriptionsStore;
+import org.eclipse.moquette.spi.impl.thinkjoy.KickOrder;
 import org.eclipse.moquette.spi.impl.thinkjoy.OnlineStateRepository;
 import org.eclipse.moquette.spi.impl.thinkjoy.TopicRouterRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import scala.concurrent.Await;
+import scala.concurrent.duration.Duration;
 
 import static org.eclipse.moquette.parser.netty.Utils.VERSION_3_1;
 import static org.eclipse.moquette.parser.netty.Utils.VERSION_3_1_1;
@@ -55,7 +70,12 @@ import static org.eclipse.moquette.parser.netty.Utils.VERSION_3_1_1;
 class ProtocolProcessor implements EventHandler<ValueEvent> {
     
     private static final Logger LOG = LoggerFactory.getLogger(ProtocolProcessor.class);
-    private Map<String, ConnectionDescriptor> m_clientIDs = new HashMap<>();
+	private static DynConfigClient client = DynConfigClientFactory.getClient();
+	private static String LOCAL_SYSTEM = "im-connector";
+	private static String REMOTE_ACTOR_PATH;
+	private static ActorSystem localSystem;
+	private static ActorSelection receiver;
+	private Map<String, ConnectionDescriptor> m_clientIDs = new HashMap<>();
     private SubscriptionsStore subscriptions;
     private IMessagesStore m_messagesStore;
     private ISessionsStore m_sessionsStore;
@@ -93,6 +113,32 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 
         // Get the ring buffer from the Disruptor to be used for publishing.
         m_ringBuffer = disruptor.getRingBuffer();
+
+	    //init actor
+	    client.init();
+	    try {
+		    REMOTE_ACTOR_PATH = client.getConfig("im-service", "common", "kicker");
+	    } catch (Exception e) {
+		    LOG.error(e.getMessage());
+		    throw new MQTTException(e);
+	    }
+	    if (localSystem == null) {
+		    localSystem = ActorSystem.create(LOCAL_SYSTEM, ConfigFactory.load().getConfig(LOCAL_SYSTEM));
+
+		    client.registerListeners("im-service", "common", "kicker", new IChangeListener() {
+			    @Override
+			    public Executor getExecutor() {
+				    return Executors.newSingleThreadExecutor();
+			    }
+
+			    @Override
+			    public void receiveConfigInfo(Configuration configuration) {
+				    REMOTE_ACTOR_PATH = configuration.getConfig();
+				    receiver = localSystem.actorSelection(REMOTE_ACTOR_PATH);
+			    }
+		    });
+		    receiver = localSystem.actorSelection(REMOTE_ACTOR_PATH);
+	    }
     }
     
     @MQTTMessage(message = ConnectMessage.class)
@@ -235,14 +281,20 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
     }
 
 	/**
-	 * publish to connect conflict message M_CONNECT_CONFLICT
-	 * 业务系统必须订阅自己的clientID的topic。
+	 * publish to connect conflict message kickOrder
 	 */
 	private void publishForConnectConflict(String clientID) {
 		LOG.trace("publishForConnectConflict for client <{}>", clientID);
-		String topic = clientID;
-		ByteBuffer message = ByteBuffer.wrap(Constants.M_CONNECT_CONFLICT.getBytes());
-		processPublish(clientID, topic, QOSType.MOST_ONE, message, false, null);
+		// 等待actor就绪
+		try {
+			String from = ClientIds.getAccount(clientID);
+			Await.ready(receiver.resolveOne(Timeout.intToTimeout(10)), Duration.apply(10, TimeUnit.SECONDS));
+			KickOrder kickOrder = new KickOrder(from, from, clientID, null);
+			receiver.tell(kickOrder, ActorRef.noSender());
+		} catch (Exception e) {
+			LOG.error(e.getMessage());
+			throw new MQTTException(e);
+		}
 	}
 
     @MQTTMessage(message = PubAckMessage.class)
@@ -271,7 +323,8 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 	    final AbstractMessage.QOSType qos = msg.getQos();
         final ByteBuffer message = msg.getPayload();
         boolean retain = msg.isRetainFlag();
-        processPublish(clientID, topic, qos, message, retain, msg.getMessageID());
+
+	    processPublish(clientID, topic, qos, message, retain, msg.getMessageID());
     }
 
 	private void processPublish(String clientID, String topic, QOSType qos, ByteBuffer message, boolean retain, Integer messageID) {
@@ -339,7 +392,8 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 		    LOG.debug("content <{}>", DebugUtils.payload2Str(origMessage));
             LOG.debug("subscription tree {}", subscriptions.dumpTree());
         }
-        for (final Subscription sub : subscriptions.matches(topic)) {
+
+	    for (final Subscription sub : subscriptions.matches(topic)) {
             if (qos.ordinal() > sub.getRequestedQos().ordinal()) {
                 qos = sub.getRequestedQos();
             }

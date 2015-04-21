@@ -21,6 +21,7 @@ public final class TokenRepository {
 
 	static {
 		try {
+			//token放在业务节点中
 			redisRepository = RedisRepositoryFactory.getRepository("im-service", "common", "redis");
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage());
@@ -51,7 +52,7 @@ public final class TokenRepository {
 	}
 
 	private static final String buildTokenKey(String token) {
-		String key = new StringBuilder("token").append(".").append(token).toString();
+		String key = new StringBuilder("token").append(":").append(token).toString();
 		return key;
 	}
 }
