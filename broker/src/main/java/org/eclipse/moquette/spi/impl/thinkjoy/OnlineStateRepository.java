@@ -8,7 +8,6 @@ import cn.thinkjoy.im.common.ClientIds;
 import com.google.common.base.Optional;
 import com.google.common.collect.Sets;
 import org.eclipse.moquette.commons.Constants;
-import org.eclipse.moquette.proto.MQTTException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
@@ -55,7 +54,6 @@ public final class OnlineStateRepository {
 		} catch (Exception e) {
 			LOGGER.error(String.format("put [userState] %s fail.", clientID));
 			LOGGER.error(e.getMessage(), e);
-			throw new MQTTException("put [userState] fail:" + clientID);
 		}
 	}
 
@@ -97,8 +95,7 @@ public final class OnlineStateRepository {
 			LOGGER.info("[User]: is offline on [clientID]:{}", userID, clientID);
 		} catch (Exception e) {
 			LOGGER.error(String.format("remove [userState] %s fail.", clientID));
-			LOGGER.error(e.getMessage());
-			throw new MQTTException("remove [userState] fail:" + clientID);
+			LOGGER.error(e.getMessage(), e);
 		}
 	}
 
@@ -108,14 +105,13 @@ public final class OnlineStateRepository {
 			Set<String> members = redisRepository.sMembers(userID);
 			if (members.size() > 0) {
 				return members;
-			} else {
-				return Sets.newHashSet();
 			}
 		} catch (Exception e) {
 			LOGGER.error(String.format("query [isOnline] %s fail.", clientID));
 			LOGGER.error(e.getMessage(), e);
-			throw new MQTTException("query [isOnline] fail:" + clientID);
+
 		}
+		return Sets.newHashSet();
 	}
 
 	//查询该clientID所属域账号下的多终端登录策略,kick or prevent
@@ -127,7 +123,8 @@ public final class OnlineStateRepository {
 		} catch (Exception e) {
 			LOGGER.error(String.format("query [mutiClientAllowable] %s fail.", clientID));
 			LOGGER.error(e.getMessage(), e);
-			throw new MQTTException("query [mutiClientAllowable] fail:" + clientID);
+			//异常情况，默认kick
+			return 1;
 		}
 	}
 }
