@@ -50,4 +50,11 @@ public class Constants {
 	public static final int KICK = 1;
 	//阻止登录
 	public static final int PREVENT = 2;
+
+	///////////////////////////系统常量 /////////////////
+
+	public static final String SYS_AREA = "thinkjoy";
+
+	public static final String SYS_UP_SPAN_TIME_TOPIC = "/up/spanTime";
+	public static final String SYS_UP_REAL_TIME_TOPIC = "/up/realTime";
 }

@@ -274,9 +274,10 @@ public class MapDBPersistentStore implements IMessagesStore, ISessionsStore {
 		return m_persistentSubscriptions.containsKey(clientID);
 	}
 
-    public void close() {
-        this.m_db.commit();
-        LOG.debug("persisted subscriptions {}", m_persistentSubscriptions);
+	//TODO:此版本不持久化
+	public void close() {
+//        this.m_db.commit();
+//        LOG.debug("persisted subscriptions {}", m_persistentSubscriptions);
         this.m_db.close();
         LOG.debug("closed disk storage");
     }
