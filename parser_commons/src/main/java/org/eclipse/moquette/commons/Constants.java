@@ -44,4 +44,10 @@ public class Constants {
 
 	//
 	public static final String KEY_AREA_ACCOUNT = "area_account";
+
+	/////////////////////////冲突登录策略//////////////////////////
+	//互踢
+	public static final int KICK = 1;
+	//阻止登录
+	public static final int PREVENT = 2;
 }

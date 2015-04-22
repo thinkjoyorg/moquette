@@ -124,7 +124,7 @@ public final class OnlineStateRepository {
 			LOGGER.error(String.format("query [mutiClientAllowable] %s fail.", clientID));
 			LOGGER.error(e.getMessage(), e);
 			//异常情况，默认kick
-			return 1;
+			return Constants.KICK;
 		}
 	}
 }

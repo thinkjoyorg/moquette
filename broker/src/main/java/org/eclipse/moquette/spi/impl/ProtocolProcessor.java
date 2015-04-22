@@ -36,6 +36,7 @@ import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.dsl.Disruptor;
 import com.typesafe.config.ConfigFactory;
+import org.eclipse.moquette.commons.Constants;
 import org.eclipse.moquette.proto.MQTTException;
 import org.eclipse.moquette.proto.messages.*;
 import org.eclipse.moquette.proto.messages.AbstractMessage.QOSType;
@@ -119,7 +120,7 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 	    try {
 		    REMOTE_ACTOR_PATH = client.getConfig("im-service", "common", "kicker");
 	    } catch (Exception e) {
-		    LOG.error(e.getMessage());
+		    LOG.error(e.getMessage(), e);
 		    throw new MQTTException(e);
 	    }
 	    if (localSystem == null) {
@@ -216,12 +217,12 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 	    //处理不允许多终端登录的场景的策略。1:kick,2:prevent
 	    //如果该域下同一个账号多终端登录的策略是kick得话
 	    int mutiClientAllowable = OnlineStateRepository.getMutiClientAllowable(msg.getClientID());
-	    if (1 == mutiClientAllowable) {
+	    if (Constants.KICK == mutiClientAllowable) {
 		    Set<String> members = OnlineStateRepository.get(msg.getClientID());
 		    for (String clientID : members) {
 			    publishForConnectConflict(clientID);
 		    }
-	    } else if (2 == mutiClientAllowable) {
+	    } else if (Constants.PREVENT == mutiClientAllowable) {
 		    //如果该域下同一个账号多终端登录的策略是prevent
 		    Set<String> members = OnlineStateRepository.get(msg.getClientID());
 		    if (members.size() > 0) {
