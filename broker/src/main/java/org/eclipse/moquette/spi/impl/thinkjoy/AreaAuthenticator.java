@@ -66,7 +66,7 @@ public class AreaAuthenticator implements IAuthenticator {
 				 */
 				JSONObject data = JSON.parseObject(body).getJSONObject("data");
 				String valid = data.getString("valid");
-				if ("true".equals(valid)) {
+				if ("true".equalsIgnoreCase(valid)) {
 					long ttl = data.getLong("ttl");
 					TokenRepository.set(token, ttl);
 					return true;
