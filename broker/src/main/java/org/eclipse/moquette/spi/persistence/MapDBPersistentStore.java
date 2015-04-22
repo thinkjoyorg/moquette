@@ -72,7 +72,7 @@ public class MapDBPersistentStore implements IMessagesStore, ISessionsStore {
 	@Override
 	public void initStore() {
 		if (m_storePath == null || m_storePath.isEmpty()) {
-			m_db = DBMaker.newMemoryDB().make();
+			m_db = DBMaker.memoryDB().make();
 		} else {
 			File tmpFile;
 			try {
@@ -82,14 +82,15 @@ public class MapDBPersistentStore implements IMessagesStore, ISessionsStore {
 				LOG.error(null, ex);
 				throw new MQTTException("Can't create temp file for subscriptions storage [" + m_storePath + "]", ex);
 			}
-			m_db = DBMaker.newFileDB(tmpFile).make();
+			m_db = DBMaker.fileDB(tmpFile).make();
 		}
-		m_retainedStore = m_db.getHashMap("retained");
-		m_persistentMessageStore = m_db.getHashMap("persistedMessages");
-		m_inflightStore = m_db.getHashMap("inflight");
-		m_inFlightIds = m_db.getHashMap("inflightPacketIDs");
-		m_persistentSubscriptions = m_db.getHashMap("subscriptions");
-		m_qos2Store = m_db.getHashMap("qos2Store");
+//		m_db = DBMaker.memoryDB().make();
+		m_retainedStore = m_db.hashMap("retained");
+		m_persistentMessageStore = m_db.hashMap("persistedMessages");
+		m_inflightStore = m_db.hashMap("inflight");
+		m_inFlightIds = m_db.hashMap("inflightPacketIDs");
+		m_persistentSubscriptions = m_db.hashMap("subscriptions");
+		m_qos2Store = m_db.hashMap("qos2Store");
 	}
 
     @Override
@@ -253,7 +254,6 @@ public class MapDBPersistentStore implements IMessagesStore, ISessionsStore {
         m_persistentSubscriptions.put(clientID, subscriptions);
         m_db.commit();
     }
-
     public List<Subscription> listAllSubscriptions() {
         List<Subscription> allSubscriptions = new ArrayList<Subscription>();
         for (Map.Entry<String, Set<Subscription>> entry : m_persistentSubscriptions.entrySet()) {

@@ -21,7 +21,7 @@ public final class AccountRepository {
 		try {
 			redisRepository = RedisRepositoryFactory.getRepository("im-connector", "common", "redis");
 		} catch (Exception e) {
-			LOGGER.error(e.getMessage());
+			LOGGER.error(e.getMessage(), e);
 			System.exit(-1);
 		}
 	}

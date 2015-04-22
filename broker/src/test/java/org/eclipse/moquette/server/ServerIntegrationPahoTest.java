@@ -22,6 +22,7 @@ import java.util.Properties;
 import cn.thinkjoy.cloudstack.cache.RedisRepository;
 import cn.thinkjoy.cloudstack.cache.RedisRepositoryFactory;
 import cn.thinkjoy.im.common.ClientIds;
+import cn.thinkjoy.im.common.PlatformType;
 import org.eclipse.paho.client.mqttv3.*;
 import org.eclipse.paho.client.mqttv3.persist.MqttDefaultFilePersistence;
 import org.junit.*;
@@ -64,7 +65,7 @@ public class ServerIntegrationPahoTest {
 	    jedis = RedisRepositoryFactory.getRepository("im-connector", "common", "redis");
 	    startServer();
 
-	    String clientID = ClientIds.generateClientId("zl", "gbdai", ClientIds.PlatformType.Android);
+	    String clientID = ClientIds.generateClientId("zl", "gbdai", PlatformType.Android);
 
 	    m_client = new MqttClient("tcp://localhost:1883", clientID, s_dataStore);
 	    m_callback = new TestCallback();
@@ -448,7 +449,7 @@ public class ServerIntegrationPahoTest {
 
 	@Test
 	public void testConnectConflict() throws Exception {
-		String anotherClientID = ClientIds.generateClientId("zl", "gbdai", ClientIds.PlatformType.Android);
+		String anotherClientID = ClientIds.generateClientId("zl", "gbdai", PlatformType.Android);
 		m_client.connect();
 		m_client.subscribe(m_client.getClientId());
 		String tmpDir = System.getProperty("java.io.tmpdir");
@@ -463,8 +464,8 @@ public class ServerIntegrationPahoTest {
 
 	@Test(expected = MqttException.class)
 	public void testConnectionPrevent() throws Exception {
-		String anotherClientID = ClientIds.generateClientId("xyy", "xyzhang", ClientIds.PlatformType.Android);
-		String aClientID = ClientIds.generateClientId("xyy", "xyzhang", ClientIds.PlatformType.Android);
+		String anotherClientID = ClientIds.generateClientId("xyy", "xyzhang", PlatformType.Android);
+		String aClientID = ClientIds.generateClientId("xyy", "xyzhang", PlatformType.Android);
 		String tmpDir = System.getProperty("java.io.tmpdir");
 		MqttClientPersistence anotherStore = new MqttDefaultFilePersistence(tmpDir + File.separator + "anotherClient");
 		MqttClientPersistence aStore = new MqttDefaultFilePersistence(tmpDir + File.separator + "anotherClient");
@@ -477,7 +478,7 @@ public class ServerIntegrationPahoTest {
 
 	@Test
 	public void testAreaAuthicatorSUCCESS() throws Exception {
-		String aClientID = ClientIds.generateClientId("xyy", "xyzhang", ClientIds.PlatformType.Android);
+		String aClientID = ClientIds.generateClientId("xyy", "xyzhang", PlatformType.Android);
 		String tmpDir = System.getProperty("java.io.tmpdir");
 		MqttClientPersistence aStore = new MqttDefaultFilePersistence(tmpDir + File.separator + "anotherClient");
 		MqttClient aClient = new MqttClient("tcp://localhost:1883", aClientID, aStore);
@@ -489,7 +490,7 @@ public class ServerIntegrationPahoTest {
 
 	@Test(expected = MqttException.class)
 	public void testAreaAuthicatorFail() throws Exception {
-		String aClientID = ClientIds.generateClientId("xyy", "xyzhang", ClientIds.PlatformType.Android);
+		String aClientID = ClientIds.generateClientId("xyy", "xyzhang", PlatformType.Android);
 		String tmpDir = System.getProperty("java.io.tmpdir");
 		MqttClientPersistence aStore = new MqttDefaultFilePersistence(tmpDir + File.separator + "anotherClient");
 		MqttClient aClient = new MqttClient("tcp://localhost:1883", aClientID, aStore);

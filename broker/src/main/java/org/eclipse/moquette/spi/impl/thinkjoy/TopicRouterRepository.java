@@ -27,7 +27,7 @@ public final class TopicRouterRepository {
 			redisRepository.getRedisTemplate().setValueSerializer(new StringRedisSerializer());
 
 		} catch (Exception e) {
-			LOGGER.error(e.getMessage());
+			LOGGER.error(e.getMessage(), e);
 			System.exit(-1);
 		}
 	}
@@ -41,7 +41,7 @@ public final class TopicRouterRepository {
 			LOGGER.info("add [topic]:{} to [node]:{}", topic, nodeId);
 		} catch (Exception e) {
 			LOGGER.error(String.format("add [topic router] %s fail.", topic));
-			LOGGER.error(e.getMessage());
+			LOGGER.error(e.getMessage(), e);
 			throw new MQTTException("add [topic router] fail:" + topic);
 		}
 //		try {

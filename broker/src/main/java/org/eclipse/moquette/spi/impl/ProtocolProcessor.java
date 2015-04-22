@@ -31,6 +31,7 @@ import cn.thinkjoy.cloudstack.dynconfig.DynConfigClientFactory;
 import cn.thinkjoy.cloudstack.dynconfig.IChangeListener;
 import cn.thinkjoy.cloudstack.dynconfig.domain.Configuration;
 import cn.thinkjoy.im.common.ClientIds;
+import cn.thinkjoy.im.protocol.system.KickOrder;
 import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.dsl.Disruptor;
@@ -48,7 +49,6 @@ import org.eclipse.moquette.spi.ISessionsStore;
 import org.eclipse.moquette.spi.impl.events.*;
 import org.eclipse.moquette.spi.impl.subscriptions.Subscription;
 import org.eclipse.moquette.spi.impl.subscriptions.SubscriptionsStore;
-import org.eclipse.moquette.spi.impl.thinkjoy.KickOrder;
 import org.eclipse.moquette.spi.impl.thinkjoy.OnlineStateRepository;
 import org.eclipse.moquette.spi.impl.thinkjoy.TopicRouterRepository;
 import org.slf4j.Logger;
@@ -292,7 +292,7 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 			KickOrder kickOrder = new KickOrder(from, from, clientID, null);
 			receiver.tell(kickOrder, ActorRef.noSender());
 		} catch (Exception e) {
-			LOG.error(e.getMessage());
+			LOG.error(e.getMessage(), e);
 			throw new MQTTException(e);
 		}
 	}

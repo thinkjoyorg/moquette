@@ -120,22 +120,23 @@ public class SubscriptionsStore {
     /**
      * Initialize the subscription tree with the list of subscriptions.
      */
+    //TODO:去掉 re-sub
     public void init(ISessionsStore sessionsStore) {
         LOG.debug("init invoked");
         m_sessionsStore = sessionsStore;
-        List<Subscription> subscriptions = sessionsStore.listAllSubscriptions();
-        //reload any subscriptions persisted
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("Reloading all stored subscriptions...subscription tree before {}", dumpTree());
-        }
-
-        for (Subscription subscription : subscriptions) {
-            LOG.debug("Re-subscribing {} to topic {}", subscription.getClientId(), subscription.getTopicFilter());
-            addDirect(subscription);
-        }
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("Finished loading. Subscription tree after {}", dumpTree());
-        }
+//        List<Subscription> subscriptions = sessionsStore.listAllSubscriptions();
+//        //reload any subscriptions persisted
+//        if (LOG.isDebugEnabled()) {
+//            LOG.debug("Reloading all stored subscriptions...subscription tree before {}", dumpTree());
+//        }
+//
+//        for (Subscription subscription : subscriptions) {
+//            LOG.debug("Re-subscribing {} to topic {}", subscription.getClientId(), subscription.getTopicFilter());
+//            addDirect(subscription);
+//        }
+//        if (LOG.isDebugEnabled()) {
+//            LOG.debug("Finished loading. Subscription tree after {}", dumpTree());
+//        }
     }
 
     protected void addDirect(Subscription newSubscription) {

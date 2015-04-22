@@ -11,6 +11,7 @@ import org.eclipse.moquette.commons.Constants;
 import org.eclipse.moquette.proto.MQTTException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 /**
  * 创建人：xy
@@ -29,8 +30,10 @@ public final class OnlineStateRepository {
 	static {
 		try {
 			redisRepository = RedisRepositoryFactory.getRepository("im-connector", "common", "redis");
+			redisRepository.getRedisTemplate().setEnableTransactionSupport(true);
+			redisRepository.getRedisTemplate().setValueSerializer(new StringRedisSerializer());
 		} catch (Exception e) {
-			LOGGER.error(e.getMessage());
+			LOGGER.error(e.getMessage(), e);
 			System.exit(-1);
 		}
 	}
@@ -51,7 +54,7 @@ public final class OnlineStateRepository {
 			LOGGER.info("[User]: is online on [clientID]:{}", userID, clientID);
 		} catch (Exception e) {
 			LOGGER.error(String.format("put [userState] %s fail.", clientID));
-			LOGGER.error(e.getMessage());
+			LOGGER.error(e.getMessage(), e);
 			throw new MQTTException("put [userState] fail:" + clientID);
 		}
 	}
@@ -110,7 +113,7 @@ public final class OnlineStateRepository {
 			}
 		} catch (Exception e) {
 			LOGGER.error(String.format("query [isOnline] %s fail.", clientID));
-			LOGGER.error(e.getMessage());
+			LOGGER.error(e.getMessage(), e);
 			throw new MQTTException("query [isOnline] fail:" + clientID);
 		}
 	}
@@ -123,7 +126,7 @@ public final class OnlineStateRepository {
 			return Integer.parseInt(kickOrPrevent.get());
 		} catch (Exception e) {
 			LOGGER.error(String.format("query [mutiClientAllowable] %s fail.", clientID));
-			LOGGER.error(e.getMessage());
+			LOGGER.error(e.getMessage(), e);
 			throw new MQTTException("query [mutiClientAllowable] fail:" + clientID);
 		}
 	}

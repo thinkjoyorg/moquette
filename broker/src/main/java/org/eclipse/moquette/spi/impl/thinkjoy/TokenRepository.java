@@ -24,7 +24,7 @@ public final class TokenRepository {
 			//token放在业务节点中
 			redisRepository = RedisRepositoryFactory.getRepository("im-service", "common", "redis");
 		} catch (Exception e) {
-			LOGGER.error(e.getMessage());
+			LOGGER.error(e.getMessage(), e);
 			System.exit(-1);
 		}
 	}

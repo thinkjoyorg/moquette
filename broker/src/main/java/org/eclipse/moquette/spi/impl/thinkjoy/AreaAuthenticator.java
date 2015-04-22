@@ -32,7 +32,7 @@ public class AreaAuthenticator implements IAuthenticator {
 		try {
 			accountArea = ClientIds.getAccountArea(clientID);
 		} catch (Exception e) {
-			LOGGER.error(e.getMessage());
+			LOGGER.error(e.getMessage(), e);
 			return false;
 		}
 		String pwd = AccountRepository.get(Constants.KEY_AREA_ACCOUNT, accountArea);
