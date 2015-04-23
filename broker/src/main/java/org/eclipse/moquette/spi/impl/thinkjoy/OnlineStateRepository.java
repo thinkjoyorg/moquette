@@ -50,7 +50,7 @@ public final class OnlineStateRepository {
 		try {
 			String userID = buildUserID(clientID);
 			redisRepository.sAdd(userID, clientID);
-			LOGGER.info("[User]: is online on [clientID]:{}", userID, clientID);
+			LOGGER.info("[User]:{} is online on [clientID]:{}", userID, clientID);
 		} catch (Exception e) {
 			LOGGER.error(String.format("put [userState] %s fail.", clientID));
 			LOGGER.error(e.getMessage(), e);
@@ -92,7 +92,7 @@ public final class OnlineStateRepository {
 					}
 				}
 			}
-			LOGGER.info("[User]: is offline on [clientID]:{}", userID, clientID);
+			LOGGER.info("[User]:{} is offline on [clientID]:{}", userID, clientID);
 		} catch (Exception e) {
 			LOGGER.error(String.format("remove [userState] %s fail.", clientID));
 			LOGGER.error(e.getMessage(), e);
