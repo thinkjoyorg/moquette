@@ -32,7 +32,9 @@ import cn.thinkjoy.cloudstack.dynconfig.IChangeListener;
 import cn.thinkjoy.cloudstack.dynconfig.domain.Configuration;
 import cn.thinkjoy.im.common.ClientIds;
 import cn.thinkjoy.im.protocol.system.KickOrder;
+import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterables;
 import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.dsl.Disruptor;
@@ -77,7 +79,7 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 	private static String REMOTE_ACTOR_PATH;
 	private static ActorSystem localSystem;
 	private static ActorSelection receiver;
-	private final List<String> SYS_TOPIC = ImmutableList.of(Constants.SYS_UP_REAL_TIME_TOPIC, Constants.SYS_UP_SPAN_TIME_TOPIC);
+	private final ImmutableList<String> SYS_TOPIC = ImmutableList.of(Constants.SYS_UP_REAL_TIME_TOPIC, Constants.SYS_UP_SPAN_TIME_TOPIC);
 	private Map<String, ConnectionDescriptor> m_clientIDs = new HashMap<>();
     private SubscriptionsStore subscriptions;
     private IMessagesStore m_messagesStore;
@@ -221,14 +223,14 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 	    if (!ClientIds.getAccountArea(msg.getClientID()).equals(Constants.SYS_AREA)) {
 		    int mutiClientAllowable = OnlineStateRepository.getMutiClientAllowable(msg.getClientID());
 		    if (Constants.KICK == mutiClientAllowable) {
-			    Set<String> members = OnlineStateRepository.get(msg.getClientID());
-			    for (String clientID : members) {
+			    String clientID = OnlineStateRepository.get(msg.getClientID());
+			    if (null != clientID) {
 				    publishForConnectConflict(clientID);
 			    }
 		    } else if (Constants.PREVENT == mutiClientAllowable) {
 			    //如果该域下同一个账号多终端登录的策略是prevent
-			    Set<String> members = OnlineStateRepository.get(msg.getClientID());
-			    if (members.size() > 0) {
+			    String clientID = OnlineStateRepository.get(msg.getClientID());
+			    if (null != clientID) {
 				    ConnAckMessage okResp = new ConnAckMessage();
 				    okResp.setReturnCode(ConnAckMessage.SERVER_UNAVAILABLE);
 				    session.write(okResp);
@@ -656,20 +658,21 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 	    boolean cleanSession = (Boolean) session.getAttribute(NettyChannel.ATTR_KEY_CLEANSESSION);
 	    LOG.debug("SUBSCRIBE client <{}> packetID {}", clientID, msg.getMessageID());
 
-        for (SubscribeMessage.Couple req : msg.subscriptions()) {
+	    //排除系统topic
+	    Iterable<SubscribeMessage.Couple> subs = Iterables.filter(msg.subscriptions(), new Predicate<SubscribeMessage.Couple>() {
+		    @Override
+		    public boolean apply(SubscribeMessage.Couple req) {
+			    return !SYS_TOPIC.contains(req.getTopicFilter());
+		    }
+	    });
+
+	    for (SubscribeMessage.Couple req : subs) {
             AbstractMessage.QOSType qos = AbstractMessage.QOSType.values()[req.getQos()];
             Subscription newSubscription = new Subscription(clientID, req.getTopicFilter(), qos, cleanSession);
             subscribeSingleTopic(newSubscription, req.getTopicFilter());
 
-	        //排除系统topic
-	        for (int i = 0; i < SYS_TOPIC.size(); i++) {
-		        String topic = SYS_TOPIC.get(i);
-		        if (!Objects.equals(req.getTopicFilter(), topic)) {
-			        TopicRouterRepository.addRoute(req.getTopicFilter());
-		        }
-	        }
-
-        }
+		    TopicRouterRepository.addRoute(req.getTopicFilter());
+	    }
 
         //ack the client
         SubAckMessage ackMessage = new SubAckMessage();

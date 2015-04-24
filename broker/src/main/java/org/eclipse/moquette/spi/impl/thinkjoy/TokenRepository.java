@@ -8,6 +8,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * 接入方在连接的时候会进行token的认证，如果通过，则可以进行连接。
+ * 并且将token放入redis中，http服务仅仅认证redis中的token。
  * 创建人：xy
  * 创建时间：15/4/17
  *

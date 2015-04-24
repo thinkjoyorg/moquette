@@ -1,12 +1,9 @@
 package org.eclipse.moquette.spi.impl.thinkjoy;
 
-import java.util.Set;
-
 import cn.thinkjoy.cloudstack.cache.RedisRepository;
 import cn.thinkjoy.cloudstack.cache.RedisRepositoryFactory;
 import cn.thinkjoy.im.common.ClientIds;
 import com.google.common.base.Optional;
-import com.google.common.collect.Sets;
 import org.eclipse.moquette.commons.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,7 +46,7 @@ public final class OnlineStateRepository {
 	public static final void put(String clientID) {
 		try {
 			String userID = buildUserID(clientID);
-			redisRepository.sAdd(userID, clientID);
+			redisRepository.set(userID, clientID);
 			LOGGER.info("[User]:{} is online on [clientID]:{}", userID, clientID);
 		} catch (Exception e) {
 			LOGGER.error(String.format("put [userState] %s fail.", clientID));
@@ -84,14 +81,7 @@ public final class OnlineStateRepository {
 	public static final void remove(String clientID) {
 		try {
 			String userID = buildUserID(clientID);
-			Set<String> members = redisRepository.sMembers(userID);
-			if (members.size() > 0) {
-				for (String member : members) {
-					if (clientID.equals(member)) {
-						redisRepository.sRem(userID, member);
-					}
-				}
-			}
+			redisRepository.del(userID);
 			LOGGER.info("[User]:{} is offline on [clientID]:{}", userID, clientID);
 		} catch (Exception e) {
 			LOGGER.error(String.format("remove [userState] %s fail.", clientID));
@@ -99,19 +89,16 @@ public final class OnlineStateRepository {
 		}
 	}
 
-	public static final Set<String> get(String clientID) {
+	public static final String get(String clientID) {
+		String result = null;
 		try {
 			String userID = buildUserID(clientID);
-			Set<String> members = redisRepository.sMembers(userID);
-			if (members.size() > 0) {
-				return members;
-			}
+			result = redisRepository.get(userID);
 		} catch (Exception e) {
 			LOGGER.error(String.format("query [isOnline] %s fail.", clientID));
 			LOGGER.error(e.getMessage(), e);
-
 		}
-		return Sets.newHashSet();
+		return result;
 	}
 
 	//查询该clientID所属域账号下的多终端登录策略,kick or prevent

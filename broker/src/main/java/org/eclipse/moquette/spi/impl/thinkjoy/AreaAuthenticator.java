@@ -1,12 +1,14 @@
 package org.eclipse.moquette.spi.impl.thinkjoy;
 
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 import cn.thinkjoy.cloudstack.dynconfig.DynConfigClient;
 import cn.thinkjoy.cloudstack.dynconfig.DynConfigClientFactory;
 import cn.thinkjoy.im.common.ClientIds;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
+import com.squareup.okhttp.ConnectionPool;
 import com.squareup.okhttp.OkHttpClient;
 import com.squareup.okhttp.Request;
 import com.squareup.okhttp.Response;
@@ -24,6 +26,21 @@ import org.slf4j.LoggerFactory;
 
 public class AreaAuthenticator implements IAuthenticator {
 	private static final Logger LOGGER = LoggerFactory.getLogger(AreaAuthenticator.class);
+	private final OkHttpClient httpClient;
+	private final DynConfigClient client;
+
+	public AreaAuthenticator() {
+		client = DynConfigClientFactory.getClient();
+		httpClient = new OkHttpClient();
+		try {
+			client.init();
+			httpClient.setConnectTimeout(10, TimeUnit.SECONDS);
+			httpClient.setConnectionPool(ConnectionPool.getDefault());
+		} catch (Exception e) {
+			LOGGER.error(e.getMessage(), e);
+			System.exit(-1);
+		}
+	}
 
 	@Override
 	public boolean checkValid(String token, String password, String clientID) {
@@ -47,13 +64,10 @@ public class AreaAuthenticator implements IAuthenticator {
 	private boolean authToken(String token) {
 		boolean b = TokenRepository.authToken(token);
 		if (!b) {
-			DynConfigClient client = DynConfigClientFactory.getClient();
-			client.init();
 
 			try {
 				String url = client.getConfig("im-service", "common", "httpTokenAuthURL");
 				String urlWithParam = new StringBuilder(url).append("?").append("token=").append(token).toString();
-				OkHttpClient httpClient = new OkHttpClient();
 				Request request = new Request.Builder()
 						.url(urlWithParam)
 						.build();
