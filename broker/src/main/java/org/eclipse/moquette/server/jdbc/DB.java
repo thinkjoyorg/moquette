@@ -3,6 +3,7 @@ package org.eclipse.moquette.server.jdbc;
 import java.sql.*;
 import java.util.Properties;
 
+import com.google.common.base.Preconditions;
 import org.eclipse.moquette.commons.Constants;
 import org.eclipse.moquette.spi.impl.thinkjoy.AccountRepository;
 import org.slf4j.Logger;
@@ -24,6 +25,8 @@ public final class DB {
 	private String driver;
 
 	public DB(Properties properties) {
+		Preconditions.checkNotNull(properties, "jdbc.properties not be null");
+
 		this.driver = properties.getProperty("driver");
 		this.url = properties.getProperty("url");
 		this.username = properties.getProperty("username");
@@ -35,7 +38,8 @@ public final class DB {
 		try {
 			conn = DriverManager.getConnection(url, username, password);
 		} catch (Exception e) {
-			LOG.error("数据库连接出错");
+			LOG.error("connect db fail..");
+			LOG.error(e.getMessage(), e);
 		}
 		return conn;
 	}
@@ -56,7 +60,7 @@ public final class DB {
 			}
 		} catch (SQLException e) {
 			LOG.error("initAreaToRedis fail...");
-			LOG.error(e.getMessage());
+			LOG.error(e.getMessage(), e);
 		} finally {
 			release(connection, ps, rs);
 		}
@@ -78,7 +82,7 @@ public final class DB {
 			}
 		} catch (SQLException e) {
 			LOG.error("initMutiClientAllowableToRedis fail...");
-			LOG.error(e.getMessage());
+			LOG.error(e.getMessage(), e);
 		} finally {
 			release(connection, ps, rs);
 		}
