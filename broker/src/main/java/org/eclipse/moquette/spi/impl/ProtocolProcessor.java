@@ -200,6 +200,9 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
         }
 
         //handle user authentication
+	    if (!ClientIds.isValid(msg.getClientID())) {
+		    authFail(session);
+	    }
         if (msg.isUserFlag()) {
             String pwd = null;
             if (msg.isPasswordFlag()) {
@@ -207,11 +210,10 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
             }
 	        //这里的username是业务方传过来的token。
 	        if (!m_authenticator.checkValid(msg.getUsername(), pwd, msg.getClientID())) {
-		        ConnAckMessage okResp = new ConnAckMessage();
-                okResp.setReturnCode(ConnAckMessage.BAD_USERNAME_OR_PASSWORD);
-                session.write(okResp);
-                return;
-            }
+		        authFail(session);
+	        }
+        } else {
+	        authFail(session);
         }
 
 	    //处理不允许多终端登录的场景的策略。1:kick,2:prevent
@@ -265,6 +267,14 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
             republishStoredInSession(msg.getClientID());
         }
     }
+
+	//mqtt 认证失败
+	private final void authFail(ServerChannel session) {
+		ConnAckMessage okResp = new ConnAckMessage();
+		okResp.setReturnCode(ConnAckMessage.BAD_USERNAME_OR_PASSWORD);
+		session.write(okResp);
+		return;
+	}
 
 	/**
 	 * Republish QoS1 and QoS2 messages stored into the session for the clientID.
