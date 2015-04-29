@@ -17,14 +17,21 @@
         </file>
 
         <file>
+            <source>src/main/scripts/moquette_ex.sh</source>
+            <outputDirectory>bin</outputDirectory>
+            <fileMode>0755</fileMode>
+        </file>
+
+
+        <file>
             <source>src/main/scripts/moquette.bat</source>
             <outputDirectory>bin</outputDirectory>
         </file>
         
         <file>
-            <source>src/main/resources/log4j.properties</source>
+            <source>src/main/resources/logback.xml</source>
             <outputDirectory>config/</outputDirectory>
-            <destName>moquette-log.properties</destName>
+            <destName>logback.xml</destName>
         </file>
         
         <file>

@@ -12,8 +12,8 @@ echo "  | |  | | (_) | (_| | |_| |  __/ |_| ||  __/ | |  | \ \/' / | |   | |   "
 echo "  \_|  |_/\___/ \__, |\__,_|\___|\__|\__\___| \_|  |_/\_/\_\ \_/   \_/   "
 echo "                   | |                                                   "
 echo "                   |_|                                                   "
-echo "                                                                         "                                                                      
-                                                                      
+echo "                                                                         "
+
 export JAVA_HOME=/opt/jdk1.7.0_79
 export CLASSPATH=.:$JAVA_HOME/lib:$JAVA_HOME/jre/lib
 
@@ -41,7 +41,7 @@ PRGDIR=`dirname "$PRG"`
 export MOQUETTE_HOME
 
 # Set JavaHome if it exists
-if [ -f "${JAVA_HOME}/bin/java" ]; then 
+if [ -f "${JAVA_HOME}/bin/java" ]; then
    JAVA=${JAVA_HOME}/bin/java
 else
    JAVA=java
@@ -54,5 +54,5 @@ MOQUETTE_PATH=$MOQUETTE_HOME/
 #LOG_FILE_LEVEL=fine
 JAVA_OPTS_SCRIPT="-XX:+HeapDumpOnOutOfMemoryError -Djava.awt.headless=true"
 
-$JAVA -server $JAVA_OPTS $JAVA_OPTS_SCRIPT -Dmoquette.path="$MOQUETTE_PATH" -cp "$MOQUETTE_HOME/lib/moquette-broker-0.7-SNAPSHOT.jar:$MOQUETTE_HOME/lib/*" org.eclipse.moquette.server.Server
+$JAVA -server $JAVA_OPTS $JAVA_OPTS_SCRIPT -Djava.rmi.server.hostname=10.10.71.9 -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=100010 -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.authenticate=false -Dmoquette.path="$MOQUETTE_PATH" -cp "$MOQUETTE_HOME/lib/moquette-broker-0.7-SNAPSHOT.jar:$MOQUETTE_HOME/lib/*" org.eclipse.moquette.server.Server
 
