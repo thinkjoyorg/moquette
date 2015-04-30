@@ -599,6 +599,13 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 
 	void processConnectionLost(LostConnectionEvent evt) {
 		String clientID = evt.clientID;
+
+		if (m_clientIDs.containsKey(clientID)) {
+			if (!m_clientIDs.get(clientID).getSession().equals(evt.session)) {
+				LOG.info("Received a lost connection with client <{}> for a not matching session", clientID);
+                return;
+            }
+        }
 		//如果丢失连接必须也要清理客户端信息。
 		Set<Subscription> subscription = m_sessionsStore.getSubscriptionById(clientID);
 		if (subscription != null) {
@@ -612,12 +619,6 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 		//if (cleanSession) {
 		cleanSession(clientID);
 		//}
-		if (m_clientIDs.containsKey(clientID)) {
-			if (!m_clientIDs.get(clientID).getSession().equals(evt.session)) {
-				LOG.info("Received a lost connection with client <{}> for a not matching session", clientID);
-                return;
-            }
-        }
 
         //If already removed a disconnect message was already processed for this clientID
         if (m_clientIDs.remove(clientID) != null) {
