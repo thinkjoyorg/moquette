@@ -37,7 +37,6 @@ import org.eclipse.moquette.spi.impl.events.ProtocolEvent;
 import org.eclipse.moquette.spi.impl.events.StopEvent;
 import org.eclipse.moquette.spi.impl.subscriptions.SubscriptionsStore;
 import org.eclipse.moquette.spi.impl.thinkjoy.AreaAuthenticator;
-import org.eclipse.moquette.spi.persistence.MapDBPersistentStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -119,19 +118,21 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
     public void stop() {
         m_stopLatch = new CountDownLatch(1);
         disruptorPublish(new StopEvent());
-        try {
+	    boolean elapsed = false;
+	    try {
             //wait the callback notification from the protocol processor thread
             LOG.debug("waiting 10 sec to m_stopLatch");
-            boolean elapsed = !m_stopLatch.await(10, TimeUnit.SECONDS);
-            LOG.debug("after m_stopLatch");
-            m_executor.shutdown();
-            m_disruptor.shutdown();
-            if (elapsed) {
-                LOG.error("Can't stop the server in 10 seconds");
-            }
+	        elapsed = !m_stopLatch.await(10, TimeUnit.SECONDS);
+
         } catch (InterruptedException ex) {
             LOG.error(null, ex);
         }
+	    LOG.debug("after m_stopLatch");
+	    m_executor.shutdown();
+	    m_disruptor.shutdown();
+	    if (elapsed) {
+		    LOG.error("Can't stop the server in 10 seconds");
+	    }
     }
     
     @Override
@@ -151,16 +152,18 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
         if (evt instanceof ProtocolEvent) {
             ServerChannel session = ((ProtocolEvent) evt).getSession();
             AbstractMessage message = ((ProtocolEvent) evt).getMessage();
-            try {
-                long startTime = System.nanoTime();
-                annotationSupport.dispatch(session, message);
-	            if (benchmarkEnabled) {
-		            long delay = System.nanoTime() - startTime;
+	        long delay = 0;
+	        try {
+		        long startTime = System.nanoTime();
+		        annotationSupport.dispatch(session, message);
+		        if (benchmarkEnabled) {
+		            delay = System.nanoTime() - startTime;
 		            histogram.recordValue(delay);
 	            }
             } catch (Throwable th) {
 	            LOG.error("Serious error processing the message {} for {}", message, session, th);
             }
+	        LOG.info("process takes: {} ms ", (delay / 1000000));
         }
     }
 
@@ -168,7 +171,9 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 	    benchmarkEnabled = Boolean.parseBoolean(System.getProperty("moquette.processor.benchmark", "false"));
 
         //TODO use a property to select the storage path
-	    MapDBPersistentStore mapStorage = new MapDBPersistentStore(props.getProperty(org.eclipse.moquette.commons.Constants.PERSISTENT_STORE_PROPERTY_NAME, ""));
+	    //TODO 此版本不需要持久化
+//	    MapDBPersistentStore mapStorage = new MapDBPersistentStore(props.getProperty(org.eclipse.moquette.commons.Constants.PERSISTENT_STORE_PROPERTY_NAME, ""));
+	    MemoryStorageService mapStorage = new MemoryStorageService();
 	    m_storageService = mapStorage;
 	    m_sessionsStore = mapStorage;
 

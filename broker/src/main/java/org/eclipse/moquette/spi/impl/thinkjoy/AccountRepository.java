@@ -4,6 +4,7 @@ import cn.thinkjoy.cloudstack.cache.RedisRepository;
 import cn.thinkjoy.cloudstack.cache.RedisRepositoryFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.redis.RedisSystemException;
 
 /**
  * 创建人：xy
@@ -27,11 +28,21 @@ public final class AccountRepository {
 	}
 
 	public static final void set(String key, String hKey, String value) {
-		redisRepository.hSet(key, hKey, value);
+		try {
+			redisRepository.hSet(key, hKey, value);
+		} catch (Exception e) {
+			LOGGER.error(e.getMessage(), e);
+			throw new RedisSystemException(e.getMessage(), e);
+		}
 	}
 
 	public static final String get(String key, String hKey) {
-		String res = redisRepository.hGet(key, hKey);
-		return res;
+		try {
+			String res = redisRepository.hGet(key, hKey);
+			return res;
+		} catch (Exception e) {
+			LOGGER.error(e.getMessage(), e);
+			throw new RedisSystemException(e.getMessage(), e);
+		}
 	}
 }

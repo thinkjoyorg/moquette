@@ -4,9 +4,11 @@ import cn.thinkjoy.cloudstack.cache.RedisRepository;
 import cn.thinkjoy.cloudstack.cache.RedisRepositoryFactory;
 import cn.thinkjoy.im.common.ClientIds;
 import com.google.common.base.Optional;
+import com.google.common.base.Preconditions;
 import org.eclipse.moquette.commons.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.redis.RedisSystemException;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 /**
@@ -51,6 +53,7 @@ public final class OnlineStateRepository {
 		} catch (Exception e) {
 			LOGGER.error(String.format("put [userState] %s fail.", clientID));
 			LOGGER.error(e.getMessage(), e);
+			throw new RedisSystemException(e.getMessage(), e);
 		}
 	}
 
@@ -65,6 +68,8 @@ public final class OnlineStateRepository {
 	 * @return
 	 */
 	private static String buildUserID(String clientID) throws Exception {
+		Preconditions.checkNotNull(clientID, "clientID must not null");
+
 		String accountArea = ClientIds.getAccountArea(clientID);
 		String account = ClientIds.getAccount(clientID);
 		StringBuilder builder = new StringBuilder(accountArea);
@@ -86,19 +91,20 @@ public final class OnlineStateRepository {
 		} catch (Exception e) {
 			LOGGER.error(String.format("remove [userState] %s fail.", clientID));
 			LOGGER.error(e.getMessage(), e);
+			throw new RedisSystemException(e.getMessage(), e);
 		}
 	}
 
 	public static final String get(String clientID) {
-		String result = null;
 		try {
 			String userID = buildUserID(clientID);
-			result = redisRepository.get(userID);
+			String result = redisRepository.get(userID);
+			return result;
 		} catch (Exception e) {
 			LOGGER.error(String.format("query [isOnline] %s fail.", clientID));
 			LOGGER.error(e.getMessage(), e);
+			throw new RedisSystemException(e.getMessage(), e);
 		}
-		return result;
 	}
 
 	//查询该clientID所属域账号下的多终端登录策略,kick or prevent

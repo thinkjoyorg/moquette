@@ -43,9 +43,6 @@ import org.eclipse.moquette.commons.Constants;
 import org.eclipse.moquette.parser.netty.MQTTDecoder;
 import org.eclipse.moquette.parser.netty.MQTTEncoder;
 import org.eclipse.moquette.server.ServerAcceptor;
-import org.eclipse.moquette.server.netty.metrics.MessageMetrics;
-import org.eclipse.moquette.server.netty.metrics.MessageMetricsCollector;
-import org.eclipse.moquette.server.netty.metrics.MessageMetricsHandler;
 import org.eclipse.moquette.spi.IMessaging;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,12 +57,12 @@ public class NettyAcceptor implements ServerAcceptor {
     EventLoopGroup m_bossGroup;
     EventLoopGroup m_workerGroup;
     //BytesMetricsCollector m_metricsCollector = new BytesMetricsCollector();
-    MessageMetricsCollector m_metricsCollector = new MessageMetricsCollector();
+	//MessageMetricsCollector m_metricsCollector = new MessageMetricsCollector();
 
 	@Override
 	public void initialize(IMessaging messaging, Properties props) throws IOException {
 		m_bossGroup = new NioEventLoopGroup();
-		m_workerGroup = new NioEventLoopGroup();
+		m_workerGroup = new NioEventLoopGroup(200);
 
         initializePlainTCPTransport(messaging, props);
         initializeWebSocketTransport(messaging, props);
@@ -83,8 +80,8 @@ public class NettyAcceptor implements ServerAcceptor {
                         pipeliner.init(pipeline);
                     }
                 })
-                .option(ChannelOption.SO_BACKLOG, 128)
-                .option(ChannelOption.SO_REUSEADDR, true)
+		        .option(ChannelOption.SO_BACKLOG, 4096)
+		        .option(ChannelOption.SO_REUSEADDR, true)
                 .option(ChannelOption.TCP_NODELAY, true)
                 .childOption(ChannelOption.SO_KEEPALIVE, true);
         try {
@@ -110,7 +107,7 @@ public class NettyAcceptor implements ServerAcceptor {
 			    //pipeline.addLast("logger", new LoggingHandler("Netty", LogLevel.ERROR));
 			    pipeline.addLast("decoder", new MQTTDecoder());
 			    pipeline.addLast("encoder", new MQTTEncoder());
-			    pipeline.addLast("metrics", new MessageMetricsHandler(m_metricsCollector));
+			    //pipeline.addLast("metrics", new MessageMetricsHandler(m_metricsCollector));
 			    pipeline.addLast("handler", handler);
 		    }
         });
@@ -142,7 +139,7 @@ public class NettyAcceptor implements ServerAcceptor {
 			    pipeline.addAfter("idleStateHandler", "idleEventHandler", new MoquetteIdleTimoutHandler());
 			    pipeline.addLast("decoder", new MQTTDecoder());
 			    pipeline.addLast("encoder", new MQTTEncoder());
-			    pipeline.addLast("metrics", new MessageMetricsHandler(m_metricsCollector));
+//			    pipeline.addLast("metrics", new MessageMetricsHandler(m_metricsCollector));
 			    pipeline.addLast("handler", handler);
 		    }
         });
@@ -204,7 +201,7 @@ public class NettyAcceptor implements ServerAcceptor {
                 //pipeline.addLast("logger", new LoggingHandler("Netty", LogLevel.ERROR));
                 pipeline.addLast("decoder", new MQTTDecoder());
                 pipeline.addLast("encoder", new MQTTEncoder());
-                pipeline.addLast("metrics", new MessageMetricsHandler(m_metricsCollector));
+//                pipeline.addLast("metrics", new MessageMetricsHandler(m_metricsCollector));
                 pipeline.addLast("handler", handler);
             }
         });
@@ -220,9 +217,9 @@ public class NettyAcceptor implements ServerAcceptor {
         m_workerGroup.shutdownGracefully();
         m_bossGroup.shutdownGracefully();
 
-        MessageMetrics metrics = m_metricsCollector.computeMetrics();
+//        MessageMetrics metrics = m_metricsCollector.computeMetrics();
         //LOG.info(String.format("Bytes read: %d, bytes wrote: %d", metrics.readBytes(), metrics.wroteBytes()));
-        LOG.info("Msg read: {}, msg wrote: {}", metrics.messagesRead(), metrics.messagesWrote());
+//        LOG.info("Msg read: {}, msg wrote: {}", metrics.messagesRead(), metrics.messagesWrote());
 	}
 
 	static class WebSocketFrameToByteBufDecoder extends MessageToMessageDecoder<BinaryWebSocketFrame> {

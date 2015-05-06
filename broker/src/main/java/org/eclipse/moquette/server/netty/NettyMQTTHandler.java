@@ -80,7 +80,13 @@ public class NettyMQTTHandler extends ChannelInboundHandlerAdapter {
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
         NettyChannel channel = m_channelMapper.get(ctx);
 	    String clientID = (String) channel.getAttribute(NettyChannel.ATTR_KEY_CLIENTID);
-	    m_messaging.lostConnection(channel, clientID);
+	    try {
+		    if (null != clientID) {
+			    m_messaging.lostConnection(channel, clientID);
+		    }
+	    } catch (Exception ex) {
+		    LOG.error("clean resource error!!!", ex);
+	    }
 	    ctx.close(/*false*/);
         synchronized(m_channelMapper) {
             m_channelMapper.remove(ctx);

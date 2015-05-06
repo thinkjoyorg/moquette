@@ -6,6 +6,7 @@ import cn.thinkjoy.cloudstack.cache.RedisRepository;
 import cn.thinkjoy.cloudstack.cache.RedisRepositoryFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.redis.RedisSystemException;
 
 /**
  * 接入方在连接的时候会进行token的认证，如果通过，则可以进行连接。
@@ -39,8 +40,13 @@ public final class TokenRepository {
 	 * @return
 	 */
 	public static boolean authToken(String token) {
-		String result = redisRepository.get(buildTokenKey(token));
-		return result == null ? false : true;
+		try {
+			String result = redisRepository.get(buildTokenKey(token));
+			return result == null ? false : true;
+		} catch (Exception e) {
+			LOGGER.error(e.getMessage(), e);
+			throw new RedisSystemException(e.getMessage(), e);
+		}
 	}
 
 	/**
@@ -50,7 +56,12 @@ public final class TokenRepository {
 	 * @param ttl
 	 */
 	public static void set(String token, long ttl) {
-		redisRepository.set(buildTokenKey(token), token, ttl, TimeUnit.SECONDS);
+		try {
+			redisRepository.set(buildTokenKey(token), token, ttl, TimeUnit.SECONDS);
+		} catch (Exception e) {
+			LOGGER.error(e.getMessage(), e);
+			throw new RedisSystemException(e.getMessage(), e);
+		}
 	}
 
 	private static final String buildTokenKey(String token) {

@@ -5,6 +5,7 @@ import cn.thinkjoy.cloudstack.cache.RedisRepositoryFactory;
 import cn.thinkjoy.cloudstack.context.CloudContextFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.redis.RedisSystemException;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 /**
@@ -41,6 +42,7 @@ public final class TopicRouterRepository {
 		} catch (Exception e) {
 			LOGGER.error(String.format("add [topic router] %s fail.", topic));
 			LOGGER.error(e.getMessage(), e);
+			throw new RedisSystemException(e.getMessage(), e);
 		}
 	}
 
@@ -66,7 +68,8 @@ public final class TopicRouterRepository {
 			LOGGER.debug("del [topic]:{} on [node]:{}", topic, nodeId);
 		} catch (Exception e) {
 			LOGGER.error(String.format("clean [topic router] %s fail.", topic));
-			LOGGER.error(e.getMessage());
+			LOGGER.error(e.getMessage(), e);
+			throw new RedisSystemException(e.getMessage(), e);
 		}
 	}
 

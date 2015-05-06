@@ -160,6 +160,44 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
             session.write(okResp);
             return;
         }
+	    //handle user authentication
+	    if (!ClientIds.isValid(msg.getClientID())) {
+		    authFail(session);
+	    }
+	    if (msg.isUserFlag()) {
+		    String pwd = null;
+		    if (msg.isPasswordFlag()) {
+			    pwd = msg.getPassword();
+		    }
+		    //这里的username是业务方传过来的token。
+		    if (!m_authenticator.checkValid(msg.getUsername(), pwd, msg.getClientID())) {
+			    authFail(session);
+		    }
+	    } else {
+		    authFail(session);
+	    }
+
+	    //处理不允许多终端登录的场景的策略。1:kick,2:prevent
+	    //如果该域下同一个账号多终端登录的策略是kick得话
+	    if (!ClientIds.getAccountArea(msg.getClientID()).equals(Constants.SYS_AREA)) {
+		    int mutiClientAllowable = OnlineStateRepository.getMutiClientAllowable(msg.getClientID());
+		    if (Constants.KICK == mutiClientAllowable) {
+			    String clientID = OnlineStateRepository.get(msg.getClientID());
+			    if (null != clientID) {
+				    publishForConnectConflict(clientID);
+			    }
+		    } else if (Constants.PREVENT == mutiClientAllowable) {
+			    //如果该域下同一个账号多终端登录的策略是prevent
+			    String clientID = OnlineStateRepository.get(msg.getClientID());
+			    if (null != clientID) {
+				    ConnAckMessage okResp = new ConnAckMessage();
+				    okResp.setReturnCode(ConnAckMessage.SERVER_UNAVAILABLE);
+				    session.write(okResp);
+				    session.close(false);
+				    return;
+			    }
+		    }
+	    }
 
         //if an old client with the same ID already exists close its session.
         if (m_clientIDs.containsKey(msg.getClientID())) {
@@ -173,7 +211,9 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
             }
 
             oldSession.close(false);
-            LOG.debug("Existing connection with same client ID <{}>, forced to close", msg.getClientID());
+
+
+	        LOG.debug("Existing connection with same client ID <{}>, forced to close", msg.getClientID());
         }
 
         ConnectionDescriptor connDescr = new ConnectionDescriptor(msg.getClientID(), session, msg.isCleanSession());
@@ -198,45 +238,6 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
             WillMessage will = new WillMessage(msg.getWillTopic(), bb, msg.isWillRetain(),willQos );
             m_willStore.put(msg.getClientID(), will);
         }
-
-        //handle user authentication
-	    if (!ClientIds.isValid(msg.getClientID())) {
-		    authFail(session);
-	    }
-        if (msg.isUserFlag()) {
-            String pwd = null;
-            if (msg.isPasswordFlag()) {
-                pwd = msg.getPassword();
-            }
-	        //这里的username是业务方传过来的token。
-	        if (!m_authenticator.checkValid(msg.getUsername(), pwd, msg.getClientID())) {
-		        authFail(session);
-	        }
-        } else {
-	        authFail(session);
-        }
-
-	    //处理不允许多终端登录的场景的策略。1:kick,2:prevent
-	    //如果该域下同一个账号多终端登录的策略是kick得话
-	    if (!ClientIds.getAccountArea(msg.getClientID()).equals(Constants.SYS_AREA)) {
-		    int mutiClientAllowable = OnlineStateRepository.getMutiClientAllowable(msg.getClientID());
-		    if (Constants.KICK == mutiClientAllowable) {
-			    String clientID = OnlineStateRepository.get(msg.getClientID());
-			    if (null != clientID) {
-				    publishForConnectConflict(clientID);
-			    }
-		    } else if (Constants.PREVENT == mutiClientAllowable) {
-			    //如果该域下同一个账号多终端登录的策略是prevent
-			    String clientID = OnlineStateRepository.get(msg.getClientID());
-			    if (null != clientID) {
-				    ConnAckMessage okResp = new ConnAckMessage();
-				    okResp.setReturnCode(ConnAckMessage.SERVER_UNAVAILABLE);
-				    session.write(okResp);
-				    session.close(false);
-				    return;
-			    }
-		    }
-	    }
 
 	    // put client online
 	    if (!ClientIds.getAccountArea(msg.getClientID()).equals(Constants.SYS_AREA)) {
