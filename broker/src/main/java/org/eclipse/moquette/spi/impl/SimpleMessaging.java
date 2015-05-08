@@ -157,13 +157,13 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 		        long startTime = System.nanoTime();
 		        annotationSupport.dispatch(session, message);
 		        if (benchmarkEnabled) {
-		            delay = System.nanoTime() - startTime;
-		            histogram.recordValue(delay);
-	            }
-            } catch (Throwable th) {
-	            LOG.error("Serious error processing the message {} for {}", message, session, th);
-            }
-	        LOG.info("process takes: {} ms ", (delay / 1000000));
+			        delay = System.nanoTime() - startTime;
+			        histogram.recordValue(delay);
+			        LOG.info("process msgType {} takes: {} ms ", message.getMessageType(), (delay / 1000000));
+		        }
+	        } catch (Throwable th) {
+		        LOG.error("Serious error processing the message {} for {}", message, session, th);
+	        }
         }
     }
 

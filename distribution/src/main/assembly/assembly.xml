@@ -29,12 +29,6 @@
         </file>
         
         <file>
-            <source>src/main/resources/logback.xml</source>
-            <outputDirectory>config/</outputDirectory>
-            <destName>logback.xml</destName>
-        </file>
-        
-        <file>
             <source>src/main/resources/moquette.conf</source>
             <outputDirectory>config/</outputDirectory>
         </file>
@@ -45,6 +39,10 @@
         </file>
         <file>
             <source>src/main/resources/jdbc.properties</source>
+            <outputDirectory>config/</outputDirectory>
+        </file>
+        <file>
+            <source>src/main/resources/logback.xml</source>
             <outputDirectory>config/</outputDirectory>
         </file>
 

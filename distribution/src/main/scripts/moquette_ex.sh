@@ -48,12 +48,12 @@ else
 fi
 export JAVA
 
-LOG_FILE=$MOQUETTE_HOME/config/moquette-log.properties
+LOG_FILE=$MOQUETTE_HOME/config/logback.xml
 MOQUETTE_PATH=$MOQUETTE_HOME/
 #LOG_CONSOLE_LEVEL=info
 #LOG_FILE_LEVEL=fine
 JAVA_OPTS_SCRIPT="-XX:+HeapDumpOnOutOfMemoryError -Djava.awt.headless=true"
 
-$JAVA -server $JAVA_OPTS $JAVA_OPTS_SCRIPT -Djava.rmi.server.hostname=10.10.71.9 -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=10086 -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.authenticate=false -XX:+UnlockCommercialFeatures -XX:+FlightRecorder -Dmoquette.path="$MOQUETTE_PATH" -cp "$MOQUETTE_HOME/lib/moquette-broker-0.7-SNAPSHOT.jar:$MOQUETTE_HOME/lib/*" org.eclipse.moquette.server.Server
+$JAVA -server $JAVA_OPTS $JAVA_OPTS_SCRIPT -Dlogback.configurationFile="file:$LOG_FILE" -Djava.rmi.server.hostname=10.10.71.9 -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=10086 -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.authenticate=false -XX:+UnlockCommercialFeatures -XX:+FlightRecorder -Dmoquette.path="$MOQUETTE_PATH" -cp "$MOQUETTE_HOME/lib/moquette-broker-0.7-SNAPSHOT.jar:$MOQUETTE_HOME/lib/*" org.eclipse.moquette.server.Server
 
 

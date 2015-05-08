@@ -39,6 +39,7 @@ import io.netty.handler.codec.http.websocketx.BinaryWebSocketFrame;
 import io.netty.handler.codec.http.websocketx.WebSocketServerProtocolHandler;
 import io.netty.handler.ssl.SslHandler;
 import io.netty.handler.timeout.IdleStateHandler;
+import io.netty.util.concurrent.DefaultThreadFactory;
 import org.eclipse.moquette.commons.Constants;
 import org.eclipse.moquette.parser.netty.MQTTDecoder;
 import org.eclipse.moquette.parser.netty.MQTTEncoder;
@@ -52,8 +53,9 @@ import org.slf4j.LoggerFactory;
  * @author andrea
  */
 public class NettyAcceptor implements ServerAcceptor {
-    
-    private static final Logger LOG = LoggerFactory.getLogger(NettyAcceptor.class);
+
+	static final int nThreads = Runtime.getRuntime().availableProcessors() * 2;
+	private static final Logger LOG = LoggerFactory.getLogger(NettyAcceptor.class);
     EventLoopGroup m_bossGroup;
     EventLoopGroup m_workerGroup;
     //BytesMetricsCollector m_metricsCollector = new BytesMetricsCollector();
@@ -61,8 +63,8 @@ public class NettyAcceptor implements ServerAcceptor {
 
 	@Override
 	public void initialize(IMessaging messaging, Properties props) throws IOException {
-		m_bossGroup = new NioEventLoopGroup();
-		m_workerGroup = new NioEventLoopGroup(200);
+		m_bossGroup = new NioEventLoopGroup(nThreads, new DefaultThreadFactory("@Boss"));
+		m_workerGroup = new NioEventLoopGroup(nThreads, new DefaultThreadFactory("@Woker"));
 
         initializePlainTCPTransport(messaging, props);
         initializeWebSocketTransport(messaging, props);

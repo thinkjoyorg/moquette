@@ -181,22 +181,18 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 	    //如果该域下同一个账号多终端登录的策略是kick得话
 	    if (!ClientIds.getAccountArea(msg.getClientID()).equals(Constants.SYS_AREA)) {
 		    int mutiClientAllowable = OnlineStateRepository.getMutiClientAllowable(msg.getClientID());
-		    if (Constants.KICK == mutiClientAllowable) {
-			    String clientID = OnlineStateRepository.get(msg.getClientID());
-			    if (null != clientID) {
-				    publishForConnectConflict(clientID);
-			    }
-		    } else if (Constants.PREVENT == mutiClientAllowable) {
-			    //如果该域下同一个账号多终端登录的策略是prevent
-			    String clientID = OnlineStateRepository.get(msg.getClientID());
-			    if (null != clientID) {
-				    ConnAckMessage okResp = new ConnAckMessage();
-				    okResp.setReturnCode(ConnAckMessage.SERVER_UNAVAILABLE);
-				    session.write(okResp);
-				    session.close(false);
-				    return;
+		    String oldClientID = OnlineStateRepository.get(msg.getClientID());
+
+		    if (null != oldClientID) {
+			    if (Constants.KICK == mutiClientAllowable) {
+				    publishForConnectConflict(oldClientID);
+
+			    } else if (Constants.PREVENT == mutiClientAllowable) {
+				    //如果该域下同一个账号多终端登录的策略是prevent
+				    //ignore
 			    }
 		    }
+
 	    }
 
         //if an old client with the same ID already exists close its session.
