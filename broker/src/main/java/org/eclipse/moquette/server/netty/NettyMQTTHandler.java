@@ -85,8 +85,8 @@ public class NettyMQTTHandler extends ChannelInboundHandlerAdapter {
 		    if (null != clientID) {
 			    m_messaging.lostConnection(channel, (String) clientID);
 		    }
-	    } catch (Exception ex) {
-		    LOG.error("clean resource error!!!", ex);
+	    } catch (Throwable th) {
+		    LOG.warn("no resource to clean。", th);
 	    }
 	    ctx.close(/*false*/);
         synchronized(m_channelMapper) {

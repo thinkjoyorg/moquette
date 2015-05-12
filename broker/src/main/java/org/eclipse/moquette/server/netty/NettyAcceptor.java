@@ -82,7 +82,7 @@ public class NettyAcceptor implements ServerAcceptor {
                         pipeliner.init(pipeline);
                     }
                 })
-		        .option(ChannelOption.SO_BACKLOG, 4096)
+		        .option(ChannelOption.SO_BACKLOG, 8192)/** 参考lighthttpd,该值受限于操作系统的 backlog参数 */
 		        .option(ChannelOption.SO_REUSEADDR, true)
                 .option(ChannelOption.TCP_NODELAY, true)
                 .childOption(ChannelOption.SO_KEEPALIVE, true);

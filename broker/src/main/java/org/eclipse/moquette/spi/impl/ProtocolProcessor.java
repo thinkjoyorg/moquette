@@ -259,10 +259,11 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 	    LOG.info("Create persistent session for clientID <{}>", msg.getClientID());
 	    m_sessionsStore.addNewSubscription(Subscription.createEmptySubscription(msg.getClientID(), true), msg.getClientID()); //null means EmptySubscription
 	    LOG.info("Connected client ID <{}> with clean session {}", msg.getClientID(), msg.isCleanSession());
-	    if (!msg.isCleanSession()) {
-		    //force the republish of stored QoS1 and QoS2
-            republishStoredInSession(msg.getClientID());
-        }
+	    //TODO:此版本中不需要推送离线消息。
+//	    if (!msg.isCleanSession()) {
+//		    //force the republish of stored QoS1 and QoS2
+//            republishStoredInSession(msg.getClientID());
+//        }
     }
 
 	//mqtt 认证失败
