@@ -181,11 +181,13 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 	    //如果该域下同一个账号多终端登录的策略是kick得话
 	    if (!ClientIds.getAccountArea(msg.getClientID()).equals(Constants.SYS_AREA)) {
 		    int mutiClientAllowable = OnlineStateRepository.getMutiClientAllowable(msg.getClientID());
-		    String oldClientID = OnlineStateRepository.get(msg.getClientID());
+		    Set<String> oldClientIDs = OnlineStateRepository.get(msg.getClientID());
 
-		    if (null != oldClientID) {
+		    if (oldClientIDs.size() > 0) {
 			    if (Constants.KICK == mutiClientAllowable) {
-				    publishForConnectConflict(oldClientID);
+				    for (String oldClientID : oldClientIDs) {
+					    publishForConnectConflict(oldClientID);
+				    }
 
 			    } else if (Constants.PREVENT == mutiClientAllowable) {
 				    //如果该域下同一个账号多终端登录的策略是prevent
@@ -256,7 +258,7 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
         }
         session.write(okResp);
 
-	    LOG.info("Create persistent session for clientID [{}]", msg.getClientID());
+	    LOG.debug("Create persistent session for clientID [{}]", msg.getClientID());
 	    m_sessionsStore.addNewSubscription(Subscription.createEmptySubscription(msg.getClientID(), true), msg.getClientID()); //null means EmptySubscription
 	    LOG.info("Connected client ID [{}] with clean session {}", msg.getClientID(), msg.isCleanSession());
 	    //TODO:此版本中不需要推送离线消息。
@@ -297,7 +299,7 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 	 * publish to connect conflict message kickOrder
 	 */
 	private void publishForConnectConflict(String clientID) {
-		LOG.trace("publishForConnectConflict for client [{}]", clientID);
+		LOG.info("publishForConnectConflict for client [{}]", clientID);
 		// 等待actor就绪
 		try {
 			String from = ClientIds.getAccount(clientID);

@@ -1,5 +1,7 @@
 package org.eclipse.moquette.spi.impl.thinkjoy;
 
+import java.util.Set;
+
 import cn.thinkjoy.cloudstack.cache.RedisRepository;
 import cn.thinkjoy.cloudstack.cache.RedisRepositoryFactory;
 import cn.thinkjoy.im.common.ClientIds;
@@ -48,7 +50,7 @@ public final class OnlineStateRepository {
 	public static final void put(String clientID) {
 		try {
 			String userID = buildUserID(clientID);
-			redisRepository.set(userID, clientID);
+			redisRepository.sAdd(userID, clientID);
 			LOGGER.info("[User]:{} is online on [clientID]:{}", userID, clientID);
 		} catch (Exception e) {
 			LOGGER.error(String.format("put [userState] %s fail.", clientID));
@@ -86,7 +88,9 @@ public final class OnlineStateRepository {
 	public static final void remove(String clientID) {
 		try {
 			String userID = buildUserID(clientID);
-			redisRepository.del(userID);
+			if (redisRepository.sIsMember(userID, clientID)) {
+				redisRepository.sRem(userID, clientID);
+			}
 			LOGGER.info("[User]:{} is offline on [clientID]:{}", userID, clientID);
 		} catch (Exception e) {
 			LOGGER.error(String.format("remove [userState] %s fail.", clientID));
@@ -95,10 +99,10 @@ public final class OnlineStateRepository {
 		}
 	}
 
-	public static final String get(String clientID) {
+	public static final Set<String> get(String clientID) {
 		try {
 			String userID = buildUserID(clientID);
-			String result = redisRepository.get(userID);
+			Set<String> result = redisRepository.sMembers(userID);
 			return result;
 		} catch (Exception e) {
 			LOGGER.error(String.format("query [isOnline] %s fail.", clientID));
