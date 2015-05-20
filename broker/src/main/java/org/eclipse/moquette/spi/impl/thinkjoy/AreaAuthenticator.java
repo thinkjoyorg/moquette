@@ -26,14 +26,16 @@ import org.slf4j.LoggerFactory;
 
 public class AreaAuthenticator implements IAuthenticator {
 	private static final Logger LOGGER = LoggerFactory.getLogger(AreaAuthenticator.class);
-	private final OkHttpClient httpClient;
-	private final DynConfigClient client;
+	private static OkHttpClient httpClient;
+	private static DynConfigClient client;
+	private static String url;
 
-	public AreaAuthenticator() {
+	static {
 		client = DynConfigClientFactory.getClient();
 		httpClient = new OkHttpClient();
 		try {
 			client.init();
+			url = client.getConfig("im-service", "common", "httpTokenAuthURL");
 			httpClient.setConnectTimeout(10, TimeUnit.SECONDS);
 			httpClient.setConnectionPool(ConnectionPool.getDefault());
 		} catch (Exception e) {
@@ -66,7 +68,6 @@ public class AreaAuthenticator implements IAuthenticator {
 		if (!b) {
 
 			try {
-				String url = client.getConfig("im-service", "common", "httpTokenAuthURL");
 				String urlWithParam = new StringBuilder(url).append("?").append("token=").append(token).toString();
 				Request request = new Request.Builder()
 						.url(urlWithParam)

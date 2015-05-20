@@ -24,7 +24,9 @@ import java.util.concurrent.TimeUnit;
 import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.dsl.Disruptor;
+import io.netty.util.concurrent.DefaultThreadFactory;
 import org.HdrHistogram.Histogram;
+import org.eclipse.moquette.commons.Constants;
 import org.eclipse.moquette.proto.messages.AbstractMessage;
 import org.eclipse.moquette.server.IAuthenticator;
 import org.eclipse.moquette.server.ServerChannel;
@@ -78,7 +80,7 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 
     public void init(Properties configProps) {
         subscriptions = new SubscriptionsStore();
-        m_executor = Executors.newFixedThreadPool(1);
+	    m_executor = Executors.newFixedThreadPool(Constants.nThreads, new DefaultThreadFactory("MessagingDispatcher"));
 	    m_disruptor = new Disruptor<>(ValueEvent.EVENT_FACTORY, 1024 * 32, m_executor);
 	    /*Disruptor<ValueEvent> m_disruptor = new Disruptor<ValueEvent>(ValueEvent.EVENT_FACTORY, 1024 * 32, m_executor,
 	            ProducerType.MULTI, new BusySpinWaitStrategy());*/

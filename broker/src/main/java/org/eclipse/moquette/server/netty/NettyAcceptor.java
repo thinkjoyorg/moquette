@@ -54,7 +54,6 @@ import org.slf4j.LoggerFactory;
  */
 public class NettyAcceptor implements ServerAcceptor {
 
-	static final int nThreads = Runtime.getRuntime().availableProcessors() * 2;
 	private static final Logger LOG = LoggerFactory.getLogger(NettyAcceptor.class);
     EventLoopGroup m_bossGroup;
     EventLoopGroup m_workerGroup;
@@ -63,8 +62,8 @@ public class NettyAcceptor implements ServerAcceptor {
 
 	@Override
 	public void initialize(IMessaging messaging, Properties props) throws IOException {
-		m_bossGroup = new NioEventLoopGroup(nThreads, new DefaultThreadFactory("@Boss"));
-		m_workerGroup = new NioEventLoopGroup(nThreads, new DefaultThreadFactory("@Woker"));
+		m_bossGroup = new NioEventLoopGroup(Constants.bTheads, new DefaultThreadFactory("Boss"));
+		m_workerGroup = new NioEventLoopGroup(Constants.wThreads, new DefaultThreadFactory("Woker"));
 
         initializePlainTCPTransport(messaging, props);
         initializeWebSocketTransport(messaging, props);

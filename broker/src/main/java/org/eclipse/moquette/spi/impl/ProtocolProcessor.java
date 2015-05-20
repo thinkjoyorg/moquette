@@ -36,6 +36,7 @@ import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.dsl.Disruptor;
 import com.typesafe.config.ConfigFactory;
+import io.netty.util.concurrent.DefaultThreadFactory;
 import org.eclipse.moquette.commons.Constants;
 import org.eclipse.moquette.proto.MQTTException;
 import org.eclipse.moquette.proto.messages.*;
@@ -106,7 +107,7 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
         m_sessionsStore = sessionsStore;
 
 	    //init the output ringbuffer
-	    m_executor = Executors.newFixedThreadPool(1);
+	    m_executor = Executors.newFixedThreadPool(Constants.nThreads, new DefaultThreadFactory("ProtocolProcessor"));
 
 	    Disruptor<ValueEvent> disruptor = new Disruptor<>(ValueEvent.EVENT_FACTORY, 1024 * 32, m_executor);
 	    disruptor.handleEventsWith(this);
@@ -119,11 +120,6 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 	    client.init();
 	    try {
 		    REMOTE_ACTOR_PATH = client.getConfig("im-service", "common", "kicker");
-	    } catch (Exception e) {
-		    LOG.error(e.getMessage(), e);
-		    throw new MQTTException(e);
-	    }
-	    if (localSystem == null) {
 		    localSystem = ActorSystem.create(LOCAL_SYSTEM, ConfigFactory.load().getConfig(LOCAL_SYSTEM));
 
 		    client.registerListeners("im-service", "common", "kicker", new IChangeListener() {
@@ -139,7 +135,12 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 			    }
 		    });
 		    receiver = localSystem.actorSelection(REMOTE_ACTOR_PATH);
+
+	    } catch (Exception e) {
+		    LOG.error(e.getMessage(), e);
+		    System.exit(-1);
 	    }
+
     }
     
     @MQTTMessage(message = ConnectMessage.class)

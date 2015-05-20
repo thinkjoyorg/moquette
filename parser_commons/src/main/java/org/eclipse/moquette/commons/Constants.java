@@ -57,4 +57,13 @@ public class Constants {
 
 	public static final String SYS_UP_SPAN_TIME_TOPIC = "/up/spanTime";
 	public static final String SYS_UP_REAL_TIME_TOPIC = "/up/realTime";
+
+	///////////////////////  RunTime ////////////////////
+	//netty boss thread pool count
+	public static final int bTheads = Runtime.getRuntime().availableProcessors();
+	//netty worker thread pool count
+	public static final int wThreads = Runtime.getRuntime().availableProcessors() * 2;
+	//disruptor thread pool count
+	public static final int nThreads = 1;
+
 }

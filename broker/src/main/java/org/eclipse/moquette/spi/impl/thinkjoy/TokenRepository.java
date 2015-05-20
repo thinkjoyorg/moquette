@@ -45,7 +45,7 @@ public final class TokenRepository {
 			return result == null ? false : true;
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
-			throw new RedisSystemException(e.getMessage(), e);
+			return false;
 		}
 	}
 

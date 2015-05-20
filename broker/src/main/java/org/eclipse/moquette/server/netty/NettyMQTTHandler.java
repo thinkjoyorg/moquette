@@ -75,9 +75,15 @@ public class NettyMQTTHandler extends ChannelInboundHandlerAdapter {
             LOG.error("Bad error in processing the message", ex);
         }
     }
-    
-    @Override
-    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+
+	@Override
+	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+		LOG.error(cause.getMessage(), cause);
+		ctx.close();
+	}
+
+	@Override
+	public void channelInactive(ChannelHandlerContext ctx) throws Exception {
         NettyChannel channel = m_channelMapper.get(ctx);
 
 	    try {
