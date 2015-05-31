@@ -15,6 +15,7 @@
  */
 package org.eclipse.moquette.server.netty;
 
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.util.Attribute;
@@ -70,5 +71,27 @@ public class NettyChannel implements ServerChannel {
 	public String toString() {
 		String clientID = (String) getAttribute(ATTR_KEY_CLIENTID);
 		return "session [clientID: " + clientID + "]" + super.toString();
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+
+		NettyChannel that = (NettyChannel) o;
+
+		if (m_channel != null ? !getKey(m_channel.channel()).equals(getKey(that.m_channel.channel())) : that.m_channel != null)
+			return false;
+
+		return true;
+	}
+
+	@Override
+	public int hashCode() {
+		return m_channel != null ? getKey(m_channel.channel()).hashCode() : 0;
+	}
+
+	private final String getKey(Channel channel) {
+		return channel.toString().split(",")[0];
 	}
 }

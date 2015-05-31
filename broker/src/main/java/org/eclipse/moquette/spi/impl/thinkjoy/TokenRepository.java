@@ -4,9 +4,10 @@ import java.util.concurrent.TimeUnit;
 
 import cn.thinkjoy.cloudstack.cache.RedisRepository;
 import cn.thinkjoy.cloudstack.cache.RedisRepositoryFactory;
+import cn.thinkjoy.im.common.IMConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.redis.RedisSystemException;
+import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 /**
  * 接入方在连接的时候会进行token的认证，如果通过，则可以进行连接。
@@ -24,8 +25,9 @@ public final class TokenRepository {
 
 	static {
 		try {
-			//token放在业务节点中
-			redisRepository = RedisRepositoryFactory.getRepository("im-service", "common", "redis");
+			redisRepository = RedisRepositoryFactory.getRepository(IMConfig.CACHE_USER_TOKEN.get());
+			redisRepository.getRedisTemplate().setValueSerializer(new StringRedisSerializer());
+
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
 			System.exit(-1);
@@ -44,7 +46,7 @@ public final class TokenRepository {
 			String result = redisRepository.get(buildTokenKey(token));
 			return result == null ? false : true;
 		} catch (Exception e) {
-			LOGGER.error(e.getMessage(), e);
+			LOGGER.warn(e.getMessage(), e);
 			return false;
 		}
 	}
@@ -59,8 +61,7 @@ public final class TokenRepository {
 		try {
 			redisRepository.set(buildTokenKey(token), token, ttl, TimeUnit.SECONDS);
 		} catch (Exception e) {
-			LOGGER.error(e.getMessage(), e);
-			throw new RedisSystemException(e.getMessage(), e);
+			LOGGER.warn(e.getMessage(), e);
 		}
 	}
 

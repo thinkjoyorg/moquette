@@ -66,4 +66,6 @@ public class Constants {
 	//disruptor thread pool count
 	public static final int nThreads = 1;
 
+	public static int SIZE_RINGBUFFER = 1024 * 256;
+
 }

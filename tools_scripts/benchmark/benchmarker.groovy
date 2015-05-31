@@ -10,6 +10,9 @@ import org.eclipse.paho.client.mqttv3.MqttAsyncClient
 import org.eclipse.paho.client.mqttv3.MqttAsyncClient
 @GrabResolver(name = 'Paho', root = 'https://repo.eclipse.org/content/repositories/paho-snapshots/')
 @Grab(group = 'org.eclipse.paho', module = 'org.eclipse.paho.client.mqttv3', version = '1.0.1')
+import org.eclipse.paho.client.mqttv3.MqttAsyncClient
+@GrabResolver(name = 'Paho', root = 'https://repo.eclipse.org/content/repositories/paho-snapshots/')
+@Grab(group = 'org.eclipse.paho', module = 'org.eclipse.paho.client.mqttv3', version = '1.0.1')
 //@GrabResolver(name='Paho', root='https://repo.eclipse.org/content/repositories/paho-releases/')
 //@Grab(group='org.eclipse.paho', module='mqtt-client', version='0.4.0')
 
@@ -100,7 +103,9 @@ String tmpDir = System.getProperty("java.io.tmpdir")
 MqttDefaultFilePersistence dataStore = new MqttDefaultFilePersistence(tmpDir)
 
 int rnd = (Math.random() * 100) as int
-MqttAsyncClient client = new MqttAsyncClient("tcp://${host}:1883", "zhiliao=xyzhang=Android=1427702425177${rnd}", dataStore)
+String clientId_prefix = "zl::xnjiang::Android::142985312";
+String clientId = clientId_prefix + rnd
+MqttAsyncClient client = new MqttAsyncClient("tcp://${host}:1883", clientId, dataStore)
 def callback = new SubscriberCallback()
 client.callback = callback
 client.connect().waitForCompletion(1000);

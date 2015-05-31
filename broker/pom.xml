@@ -43,6 +43,12 @@
             <version>1.7.5</version>
         </dependency>
 
+        <dependency>
+            <groupId>io.reactivex</groupId>
+            <artifactId>rxjava</artifactId>
+            <version>1.0.10</version>
+        </dependency>
+
         <!--<dependency>-->
         <!--<groupId>org.slf4j</groupId>-->
         <!--<artifactId>slf4j-log4j12</artifactId>-->
@@ -53,24 +59,25 @@
         <dependency>
             <groupId>cn.thinkjoy.cloudstack</groupId>
             <artifactId>cs-clustermanager-client</artifactId>
-            <version>0.0.21-SNAPSHOT</version>
+            <version>0.0.23-SNAPSHOT</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>cn.thinkjoy.cloudstack</groupId>
             <artifactId>cs-context</artifactId>
-            <version>0.0.21-SNAPSHOT</version>
+            <version>0.0.23-SNAPSHOT</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>cn.thinkjoy.im</groupId>
-            <artifactId>im-common</artifactId>
-            <version>0.1.7-SNAPSHOT</version>
+            <artifactId>im-api</artifactId>
+            <version>0.2.2-SNAPSHOT</version>
         </dependency>
+
         <dependency>
             <groupId>cn.thinkjoy.cloudstack</groupId>
             <artifactId>cs-spring-redis</artifactId>
-            <version>0.0.21-SNAPSHOT</version>
+            <version>0.0.23-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>com.typesafe.akka</groupId>

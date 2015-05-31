@@ -15,11 +15,12 @@
  */
 package org.eclipse.moquette.parser.netty;
 
+import java.io.UnsupportedEncodingException;
+import java.util.List;
+
 import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.CorruptedFrameException;
 import io.netty.util.AttributeMap;
-import java.io.UnsupportedEncodingException;
-import java.util.List;
 import org.eclipse.moquette.proto.messages.AbstractMessage.QOSType;
 import org.eclipse.moquette.proto.messages.SubscribeMessage;
 
@@ -47,8 +48,9 @@ class SubscribeDecoder extends DemuxDecoder {
         int start = in.readerIndex();
         //read  messageIDs
         message.setMessageID(in.readUnsignedShort());
-        int readed = in.readerIndex() - start;
-        while (readed < message.getRemainingLength()) {
+	    System.out.printf(message.getRemainingLength() + "========================");
+	    int readed = in.readerIndex() - start;
+	    while (readed < message.getRemainingLength()) {
             decodeSubscription(in, message);
             readed = in.readerIndex()- start;
         }

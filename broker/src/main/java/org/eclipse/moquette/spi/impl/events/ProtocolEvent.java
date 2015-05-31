@@ -23,8 +23,8 @@ import org.eclipse.moquette.server.ServerChannel;
  * Event used to carry ProtocolMessages from front handler to event processor
  */
 public class ProtocolEvent extends MessagingEvent {
-    ServerChannel m_session;
-    AbstractMessage message;
+	protected ServerChannel m_session;
+	protected AbstractMessage message;
 
     public ProtocolEvent(ServerChannel session, AbstractMessage message) {
         this.m_session = session;

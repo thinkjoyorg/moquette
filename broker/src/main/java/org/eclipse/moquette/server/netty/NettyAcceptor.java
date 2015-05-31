@@ -62,8 +62,8 @@ public class NettyAcceptor implements ServerAcceptor {
 
 	@Override
 	public void initialize(IMessaging messaging, Properties props) throws IOException {
-		m_bossGroup = new NioEventLoopGroup(Constants.bTheads, new DefaultThreadFactory("Boss"));
-		m_workerGroup = new NioEventLoopGroup(Constants.wThreads, new DefaultThreadFactory("Woker"));
+		m_bossGroup = new NioEventLoopGroup(1, new DefaultThreadFactory("Boss"));
+		m_workerGroup = new NioEventLoopGroup(Constants.wThreads, new DefaultThreadFactory("Worker"));
 
         initializePlainTCPTransport(messaging, props);
         initializeWebSocketTransport(messaging, props);
@@ -105,7 +105,7 @@ public class NettyAcceptor implements ServerAcceptor {
 		    void init(ChannelPipeline pipeline) {
 			    pipeline.addFirst("idleStateHandler", new IdleStateHandler(0, 0, Constants.DEFAULT_CONNECT_TIMEOUT));
 			    pipeline.addAfter("idleStateHandler", "idleEventHandler", new MoquetteIdleTimoutHandler());
-			    //pipeline.addLast("logger", new LoggingHandler("Netty", LogLevel.ERROR));
+//			    pipeline.addLast("logger", new LoggingHandler("Netty", LogLevel.ERROR));
 			    pipeline.addLast("decoder", new MQTTDecoder());
 			    pipeline.addLast("encoder", new MQTTEncoder());
 			    //pipeline.addLast("metrics", new MessageMetricsHandler(m_metricsCollector));

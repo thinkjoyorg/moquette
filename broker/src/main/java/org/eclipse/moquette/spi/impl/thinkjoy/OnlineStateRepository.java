@@ -5,6 +5,7 @@ import java.util.Set;
 import cn.thinkjoy.cloudstack.cache.RedisRepository;
 import cn.thinkjoy.cloudstack.cache.RedisRepositoryFactory;
 import cn.thinkjoy.im.common.ClientIds;
+import cn.thinkjoy.im.common.IMConfig;
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import org.eclipse.moquette.commons.Constants;
@@ -29,7 +30,7 @@ public final class OnlineStateRepository {
 
 	static {
 		try {
-			redisRepository = RedisRepositoryFactory.getRepository("im-connector", "common", "redis");
+			redisRepository = RedisRepositoryFactory.getRepository(IMConfig.CACHE_USER_PRESENCE.get());
 			redisRepository.getRedisTemplate().setEnableTransactionSupport(true);
 			redisRepository.getRedisTemplate().setValueSerializer(new StringRedisSerializer());
 		} catch (Exception e) {
@@ -86,6 +87,7 @@ public final class OnlineStateRepository {
 	 * @param clientID
 	 */
 	public static final void remove(String clientID) {
+		long s1 = System.currentTimeMillis();
 		try {
 			String userID = buildUserID(clientID);
 			if (redisRepository.sIsMember(userID, clientID)) {
@@ -97,6 +99,8 @@ public final class OnlineStateRepository {
 			LOGGER.error(e.getMessage(), e);
 			throw new RedisSystemException(e.getMessage(), e);
 		}
+		long e1 = System.currentTimeMillis();
+		LOGGER.debug("remove online takes [{}] ms", (e1 - s1));
 	}
 
 	public static final Set<String> get(String clientID) {

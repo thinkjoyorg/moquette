@@ -20,19 +20,10 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 class TreeNode {
 
-    private class ClientIDComparator implements Comparator<Subscription> {
-
-        public int compare(Subscription o1, Subscription o2) {
-            return o1.getClientId().compareTo(o2.getClientId());
-        }
-        
-    }
-
     TreeNode m_parent;
     Token m_token;
     List<TreeNode> m_children = new ArrayList<TreeNode>();
     List<Subscription> m_subscriptions = new ArrayList<Subscription>();
-
     TreeNode(TreeNode parent) {
         this.m_parent = parent;
     }
@@ -55,7 +46,7 @@ class TreeNode {
         if (existingSubIdx >= 0) {
             m_subscriptions.remove(existingSubIdx);
         }
-        
+
         m_subscriptions.add(s);
     }
 
@@ -128,7 +119,8 @@ class TreeNode {
         return res;
     }
 
-    void removeClientSubscriptions(String clientID) {
+	//TODO:优化点
+	void removeClientSubscriptions(String clientID) {
         //collect what to delete and then delete to avoid ConcurrentModification
         List<Subscription> subsToRemove = new ArrayList<Subscription>();
         for (Subscription s : m_subscriptions) {
@@ -194,5 +186,13 @@ class TreeNode {
             subs.addAll(child.findAllByClientID(clientID));
         }
         return subs;
+    }
+
+	private class ClientIDComparator implements Comparator<Subscription> {
+
+		public int compare(Subscription o1, Subscription o2) {
+			return o1.getClientId().compareTo(o2.getClientId());
+		}
+
     }
 }

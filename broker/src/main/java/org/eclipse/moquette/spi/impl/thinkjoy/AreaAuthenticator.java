@@ -6,6 +6,7 @@ import java.util.concurrent.TimeUnit;
 import cn.thinkjoy.cloudstack.dynconfig.DynConfigClient;
 import cn.thinkjoy.cloudstack.dynconfig.DynConfigClientFactory;
 import cn.thinkjoy.im.common.ClientIds;
+import cn.thinkjoy.im.common.IMConfig;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.squareup.okhttp.ConnectionPool;
@@ -35,7 +36,8 @@ public class AreaAuthenticator implements IAuthenticator {
 		httpClient = new OkHttpClient();
 		try {
 			client.init();
-			url = client.getConfig("im-service", "common", "httpTokenAuthURL");
+//			url = client.getConfig("im-service", "common", "httpTokenAuthURL");
+			url = IMConfig.HTTP_TOKEN_AUTH_URL.get();
 			httpClient.setConnectTimeout(10, TimeUnit.SECONDS);
 			httpClient.setConnectionPool(ConnectionPool.getDefault());
 		} catch (Exception e) {
