@@ -459,9 +459,10 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 			if (m_clientIDs == null) {
 				throw new RuntimeException("Internal bad error, found m_clientIDs to null while it should be initialized, somewhere it's overwritten!!");
 			}
-			LOG.debug("clientIDs are {}", m_clientIDs);
+//			LOG.debug("clientIDs are {}", m_clientIDs);
 			if (m_clientIDs.get(clientId) == null) {
-				throw new RuntimeException(String.format("Can't find a ConnectionDescriptor for client %s in cache %s", clientId, m_clientIDs));
+				LOG.error("Can't find a ConnectionDescriptor for client [{}] in cache", clientId);
+				throw new RuntimeException(String.format("Can't find a ConnectionDescriptor for client %s in cache", clientId));
 			}
 //            LOG.debug("Session for clientId " + clientId + " is " + m_clientIDs.get(clientId).getSession());
 //            m_clientIDs.get(clientId).getSession().write(pubAckMessage);
