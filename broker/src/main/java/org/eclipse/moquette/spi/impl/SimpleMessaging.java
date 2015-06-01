@@ -161,7 +161,7 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 	 * @return
 	 */
 	private final boolean hasIoLogic(AbstractMessage msg) {
-		if (msg.getMessageType() == AbstractMessage.CONNACK || msg.getMessageType() == AbstractMessage.SUBSCRIBE) {
+		if (msg.getMessageType() == AbstractMessage.CONNECT || msg.getMessageType() == AbstractMessage.SUBSCRIBE) {
 			return true;
 		} else {
 			return false;
@@ -262,16 +262,16 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 	private void processStop() {
 		LOG.debug("processStop invoked");
 		m_storageService.close();
-		LOG.debug("subscription tree {}", subscriptions.dumpTree());
+//		LOG.debug("subscription tree {}", subscriptions.dumpTree());
 //        m_eventProcessor.halt();
 //        m_executor.shutdown();
 
 		subscriptions = null;
 		m_stopLatch.countDown();
 
-		if (benchmarkEnabled) {
-			//log metrics
-			histogram.outputPercentileDistribution(System.out, 1000.0);
-		}
+//		if (benchmarkEnabled) {
+//			//log metrics
+//			histogram.outputPercentileDistribution(System.out, 1000.0);
+//		}
 	}
 }
