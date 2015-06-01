@@ -19,6 +19,8 @@ import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import cn.thinkjoy.im.api.client.IMClient;
 import cn.thinkjoy.im.common.ClientIds;
@@ -70,6 +72,7 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 	private IMessagesStore m_messagesStore;
 	private ISessionsStore m_sessionsStore;
 	private IAuthenticator m_authenticator;
+	private Lock lock = new ReentrantLock();
 	//maps clientID to Will testament, if specified on CONNECT
 	private Map<String, WillMessage> m_willStore = new HashMap<>();
 	private ExecutorService mainExecutor, ioExecutor;
@@ -280,14 +283,17 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 	private void cleanSession(String clientID) {
 		LOG.info("cleaning old saved subscriptions for client [{}]", clientID);
 		//remove from log all subscriptions
-		long start = System.currentTimeMillis();
-		m_sessionsStore.wipeSubscriptions(clientID);
-		subscriptions.removeForClient(clientID);
+		lock.lock();
+		try {
+			m_sessionsStore.wipeSubscriptions(clientID);
+			subscriptions.removeForClient(clientID);
 
-		//remove also the messages stored of type QoS1/2
-		m_messagesStore.dropMessagesInSession(clientID);
-		long end = System.currentTimeMillis();
-		LOG.debug("cleanSession takes [{}] ms", (end - start));
+			//remove also the messages stored of type QoS1/2
+			m_messagesStore.dropMessagesInSession(clientID);
+
+		} finally {
+			lock.unlock();
+		}
 	}
 
 	@MQTTMessage(message = PublishMessage.class)
@@ -607,11 +613,15 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 		int messageID = msg.getMessageID();
 		String clientID = (String) session.getAttribute(NettyChannel.ATTR_KEY_CLIENTID);
 		LOG.info("UNSUBSCRIBE subscription on topics {} for clientID [{}]", topics, clientID);
+		lock.lock();
+		try {
+			for (String topic : topics) {
+				subscriptions.removeSubscription(topic, clientID);
 
-		for (String topic : topics) {
-			subscriptions.removeSubscription(topic, clientID);
-
-			TopicRouterRepository.cleanRouteTopicNode(topic);
+				TopicRouterRepository.cleanRouteTopicNode(topic);
+			}
+		} finally {
+			lock.unlock();
 		}
 		//ack the client
 		UnsubAckMessage ackMessage = new UnsubAckMessage();
@@ -662,8 +672,13 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 				newSubscription.getClientId(), topic,
 				AbstractMessage.QOSType.formatQoS(newSubscription.getRequestedQos()));
 		String clientID = newSubscription.getClientId();
-		m_sessionsStore.addNewSubscription(newSubscription, clientID);
-		subscriptions.add(newSubscription);
+		lock.lock();
+		try {
+			m_sessionsStore.addNewSubscription(newSubscription, clientID);
+			subscriptions.add(newSubscription);
+		} finally {
+			lock.unlock();
+		}
 
 		//scans retained messages to be published to the new subscription
 		Collection<IMessagesStore.StoredMessage> messages = m_messagesStore.searchMatching(new IMatchingCondition() {

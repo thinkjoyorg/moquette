@@ -175,8 +175,8 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 		boolean elapsed = false;
 		try {
 			//wait the callback notification from the protocol processor thread
-			LOG.debug("waiting 10 sec to m_stopLatch");
-			elapsed = !m_stopLatch.await(10, TimeUnit.SECONDS);
+			LOG.debug("waiting 30 sec to m_stopLatch");
+			elapsed = !m_stopLatch.await(30, TimeUnit.SECONDS);
 
 		} catch (InterruptedException ex) {
 			LOG.error(null, ex);

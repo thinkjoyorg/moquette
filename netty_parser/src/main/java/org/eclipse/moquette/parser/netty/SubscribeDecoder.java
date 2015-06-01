@@ -48,7 +48,6 @@ class SubscribeDecoder extends DemuxDecoder {
         int start = in.readerIndex();
         //read  messageIDs
         message.setMessageID(in.readUnsignedShort());
-	    System.out.printf(message.getRemainingLength() + "========================");
 	    int readed = in.readerIndex() - start;
 	    while (readed < message.getRemainingLength()) {
             decodeSubscription(in, message);
