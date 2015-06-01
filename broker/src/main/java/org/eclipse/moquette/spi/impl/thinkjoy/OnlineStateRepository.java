@@ -87,39 +87,49 @@ public final class OnlineStateRepository {
 	 * @param clientID
 	 */
 	public static final void remove(String clientID) {
-		long s1 = System.currentTimeMillis();
 		try {
+			long s = System.currentTimeMillis();
 			String userID = buildUserID(clientID);
 			if (redisRepository.sIsMember(userID, clientID)) {
 				redisRepository.sRem(userID, clientID);
 			}
-			LOGGER.debug("[User]:{} is offline on [clientID]:{}", userID, clientID);
+			LOGGER.trace("[User]:{} is offline on [clientID]:{}", userID, clientID);
+			long e = System.currentTimeMillis();
+			LOGGER.debug("remove online state takes [{}] ms", e - s);
 		} catch (Exception e) {
 			LOGGER.error(String.format("remove [userState] %s fail.", clientID));
 			LOGGER.error(e.getMessage(), e);
 			throw new RedisSystemException(e.getMessage(), e);
 		}
-		long e1 = System.currentTimeMillis();
-		LOGGER.debug("remove online takes [{}] ms", (e1 - s1));
+
 	}
 
 	public static final Set<String> get(String clientID) {
+		long start, end;
 		try {
+			start = System.currentTimeMillis();
 			String userID = buildUserID(clientID);
 			Set<String> result = redisRepository.sMembers(userID);
+			end = System.currentTimeMillis();
+			LOGGER.debug("get online state takes [{}] ms", end - start);
 			return result;
 		} catch (Exception e) {
 			LOGGER.error(String.format("query [isOnline] %s fail.", clientID));
 			LOGGER.error(e.getMessage(), e);
 			throw new RedisSystemException(e.getMessage(), e);
 		}
+
 	}
 
 	//查询该clientID所属域账号下的多终端登录策略,kick or prevent
 	public static final int getMutiClientAllowable(String clientID) {
+		long start, end;
 		try {
+			start = System.currentTimeMillis();
 			String accountArea = ClientIds.getAccountArea(clientID);
 			Optional<String> kickOrPrevent = Optional.of(AccountRepository.get(Constants.KEY_MUTI_CLIENT_ALLOWABLE, accountArea));
+			end = System.currentTimeMillis();
+			LOGGER.debug("get mutiClient takes [{}] ms", end - start);
 			return Integer.parseInt(kickOrPrevent.get());
 		} catch (Exception e) {
 			LOGGER.error(String.format("query [mutiClientAllowable] %s fail.", clientID));

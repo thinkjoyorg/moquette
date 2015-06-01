@@ -37,7 +37,7 @@ public final class TopicRouterRepository {
 			final String key = buildTopicCounterKey(topic, NODE_ID);
 			redisRepository.incr(key, 1L);
 			redisRepository.sAdd(topic, NODE_ID);
-			LOGGER.debug("add [topic]:{} to [node]:{}", topic, NODE_ID);
+			LOGGER.trace("add [topic]:{} to [node]:{}", topic, NODE_ID);
 		} catch (Exception e) {
 			LOGGER.error(String.format("add [topic router] %s fail.", topic));
 			LOGGER.error(e.getMessage(), e);
@@ -53,7 +53,9 @@ public final class TopicRouterRepository {
 	 * @param topic
 	 */
 	public static final void cleanRouteTopicNode(final String topic) {
+		long start, end;
 		try {
+			start = System.currentTimeMillis();
 			final String key = buildTopicCounterKey(topic, NODE_ID);
 			String val = redisRepository.get(key);
 			if (null != val && Integer.parseInt(val.toString()) != 0) {
@@ -63,7 +65,9 @@ public final class TopicRouterRepository {
 					redisRepository.sRem(topic, NODE_ID);
 				}
 			}
-			LOGGER.debug("del [topic]:{} on [node]:{}", topic, NODE_ID);
+			end = System.currentTimeMillis();
+			LOGGER.debug("cleanRouteTopic takes [{}] ms", end - start);
+			LOGGER.trace("del [topic]:{} on [node]:{}", topic, NODE_ID);
 		} catch (Exception e) {
 			LOGGER.error(String.format("clean [topic router] %s fail.", topic));
 			LOGGER.error(e.getMessage(), e);
