@@ -57,7 +57,7 @@ import org.slf4j.LoggerFactory;
  */
 
 /**
- * 将事件分为两类进行分发：一类是带有io操作的事件(connect, subscribe)，一类不带io操作。
+ * 将事件分为两类进行分发：一类是带有io操作的事件(connect, subscribe)，一类不带io操作的事件(publish)。
  * 带有io操作的事件，被多线程分发器(io_disruptor)所分发
  * 不带io操作的事件，被单线程分发器(m_disruptor)所分发。
  */

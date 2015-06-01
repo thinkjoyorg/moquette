@@ -8,6 +8,7 @@ import cn.thinkjoy.im.protocol.system.KickOrder;
 import com.lmax.disruptor.WorkHandler;
 import org.eclipse.moquette.commons.Constants;
 import org.eclipse.moquette.proto.MQTTException;
+import org.eclipse.moquette.spi.impl.events.ConnectIoEvent;
 import org.eclipse.moquette.spi.impl.events.ExtraIoEvent;
 import org.eclipse.moquette.spi.impl.events.IoEvent;
 import org.eclipse.moquette.spi.impl.events.MessagingEvent;
@@ -109,13 +110,11 @@ public class IoTaskProcessor implements WorkHandler<ValueEvent> {
 	/**
 	 * publish to connect conflict message kickOrder
 	 */
-	private final void publishForConnectConflict(String clientID) {
+	private final void publishForConnectConflict(String clientID, IMClient client) {
 		LOG.info("publishForConnectConflict for client [{}]", clientID);
-		IMClient client = IMClient.get();
 		// 等待actor就绪
 		long start = System.currentTimeMillis();
 		try {
-			client.prepare();
 			String from = ClientIds.getAccount(clientID);
 			String areaAccount = ClientIds.getAccountArea(clientID);
 			KickOrder kickOrder = new KickOrder(areaAccount, from, from, clientID, null);
@@ -139,7 +138,6 @@ public class IoTaskProcessor implements WorkHandler<ValueEvent> {
 				case CONNECT:
 					//处理不允许多终端登录的场景的策略。1:kick,2:prevent
 					//如果该域下同一个账号多终端登录的策略是kick得话
-
 					if (!ClientIds.getAccountArea(clientID).equals(Constants.SYS_AREA)) {
 						long start = System.currentTimeMillis();
 						int mutiClientAllowable = OnlineStateRepository.getMutiClientAllowable(clientID);
@@ -148,8 +146,10 @@ public class IoTaskProcessor implements WorkHandler<ValueEvent> {
 						LOG.debug("mutilClient takes [{}] ms, and oldClientIDs's size is [{}]", (end - start), oldClientIDs.size());
 						if (oldClientIDs.size() > 0) {
 							if (Constants.KICK == mutiClientAllowable) {
+								ConnectIoEvent connectIoEvent = (ConnectIoEvent) evt;
+								IMClient client = connectIoEvent.getClient();
 								for (String oldClientID : oldClientIDs) {
-									publishForConnectConflict(oldClientID);
+									publishForConnectConflict(oldClientID, client);
 								}
 
 							} else if (Constants.PREVENT == mutiClientAllowable) {

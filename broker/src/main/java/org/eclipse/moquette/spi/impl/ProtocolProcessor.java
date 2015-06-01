@@ -20,6 +20,7 @@ import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import cn.thinkjoy.im.api.client.IMClient;
 import cn.thinkjoy.im.common.ClientIds;
 import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.RingBuffer;
@@ -54,6 +55,12 @@ import static org.eclipse.moquette.parser.netty.Utils.VERSION_3_1_1;
  *
  * @author andrea
  */
+
+/**
+ * 协议处理器将事件分为io(connect, disconnect, lost connection)事件和非io事件。
+ * io事件使用workerpool模型处理
+ * 非io事件使用单线程worker模型处理
+ */
 class ProtocolProcessor implements EventHandler<ValueEvent> {
 
 	private static final Logger LOG = LoggerFactory.getLogger(ProtocolProcessor.class);
@@ -67,6 +74,7 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 	private Map<String, WillMessage> m_willStore = new HashMap<>();
 	private ExecutorService mainExecutor, ioExecutor;
 	private RingBuffer<ValueEvent> mainRingBuffer, ioRingBuffer;
+	private IMClient client;
 
 	ProtocolProcessor() {
 	}
@@ -106,6 +114,14 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 		// Get the ring buffer from the Disruptor to be used for publishing.
 		mainRingBuffer = mainDisruptor.getRingBuffer();
 		ioRingBuffer = ioDisruptor.getRingBuffer();
+
+		client = IMClient.get();
+		try {
+			client.prepare();
+		} catch (Exception e) {
+			LOG.error(e.getMessage(), e);
+			System.exit(-1);
+		}
 
 	}
 
@@ -219,7 +235,7 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 //		    //force the republish of stored QoS1 and QoS2
 //            republishStoredInSession(msg.getClientID());
 //        }
-		IoEvent ioEvent = new IoEvent(IoEvent.IoEventType.CONNECT, msg.getClientID());
+		ConnectIoEvent ioEvent = new ConnectIoEvent(IoEvent.IoEventType.CONNECT, msg.getClientID(), client);
 
 		publishToIoDisruptor(ioEvent);
 //
