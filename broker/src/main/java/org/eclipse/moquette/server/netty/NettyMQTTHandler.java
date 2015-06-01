@@ -91,6 +91,7 @@ public class NettyMQTTHandler extends ChannelInboundHandlerAdapter {
 
 	@Override
 	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+		LOG.error("NettyMQTTHandler exceptionCaught!!");
 		LOG.error(cause.getMessage(), cause);
 		NettyChannel channel = m_channelMapper.get(getKey(ctx.channel()));
 		if (null != channel) {
@@ -133,7 +134,7 @@ public class NettyMQTTHandler extends ChannelInboundHandlerAdapter {
 				m_messaging.lostConnection(channel, (String) clientID);
 			}
 		} catch (Throwable th) {
-			LOG.warn("no resource to clean。", th);
+			LOG.warn("no resource to clean!", th);
 		}
 	}
 
