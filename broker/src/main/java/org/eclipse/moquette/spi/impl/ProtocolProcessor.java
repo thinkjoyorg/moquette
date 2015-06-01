@@ -363,10 +363,10 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 	private void forward2Subscribers(String topic, AbstractMessage.QOSType qos, ByteBuffer origMessage,
 	                                 boolean retain, Integer messageID) {
 		LOG.debug("forward2Subscribers republishing to existing subscribers that matches the topic {}", topic);
-		if (LOG.isDebugEnabled()) {
-			LOG.debug("content [{}]", DebugUtils.payload2Str(origMessage));
-			LOG.debug("subscription tree {}", subscriptions.dumpTree());
-		}
+//		if (LOG.isDebugEnabled()) {
+//			LOG.debug("content [{}]", DebugUtils.payload2Str(origMessage));
+//			LOG.debug("subscription tree {}", subscriptions.dumpTree());
+//		}
 
 		for (final Subscription sub : subscriptions.matches(topic)) {
 			if (qos.ordinal() > sub.getRequestedQos().ordinal()) {
@@ -429,9 +429,10 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 		if (m_clientIDs == null) {
 			throw new RuntimeException("Internal bad error, found m_clientIDs to null while it should be initialized, somewhere it's overwritten!!");
 		}
-		LOG.debug("clientIDs are {}", m_clientIDs);
+//		LOG.debug("clientIDs are {}", m_clientIDs);
 		if (m_clientIDs.get(clientId) == null) {
-			throw new RuntimeException(String.format("Can't find a ConnectionDescriptor for client <%s> in cache <%s>", clientId, m_clientIDs));
+			LOG.error("Can't find a ConnectionDescriptor for client [{}] in cache", clientId);
+			throw new RuntimeException(String.format("Can't find a ConnectionDescriptor for client <%s> in cache", clientId));
 		}
 		LOG.debug("Session for clientId {} is {}", clientId, m_clientIDs.get(clientId).getSession());
 //        m_clientIDs.get(clientId).getSession().write(pubMessage);
