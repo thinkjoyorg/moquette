@@ -91,8 +91,7 @@ public class NettyMQTTHandler extends ChannelInboundHandlerAdapter {
 
 	@Override
 	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-		LOG.error("NettyMQTTHandler exceptionCaught!!");
-		LOG.error(cause.getMessage(), cause);
+		LOG.warn("NettyMQTTHandler exceptionCaught!!");
 		NettyChannel channel = m_channelMapper.get(getKey(ctx.channel()));
 		if (null != channel) {
 			remove(ctx.channel());
@@ -105,7 +104,6 @@ public class NettyMQTTHandler extends ChannelInboundHandlerAdapter {
 
 	@Override
 	public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-		LOG.debug("channelInactive");
 		super.channelInactive(ctx);
 		NettyChannel channel = m_channelMapper.get(getKey(ctx.channel()));
 		if (null == channel) {
