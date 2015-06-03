@@ -88,16 +88,13 @@ public final class OnlineStateRepository {
 	 */
 	public static final void remove(String clientID) {
 		try {
-			long s = System.currentTimeMillis();
 			String userID = buildUserID(clientID);
 			if (redisRepository.sIsMember(userID, clientID)) {
 				redisRepository.sRem(userID, clientID);
 			}
-			LOGGER.trace("[User]:{} is offline on [clientID]:{}", userID, clientID);
-			long e = System.currentTimeMillis();
-			LOGGER.debug("remove online state takes [{}] ms", e - s);
+			LOGGER.debug("[User]:{} is offline on [clientID]:{}", userID, clientID);
 		} catch (Exception e) {
-			LOGGER.error(String.format("remove [userState] %s fail.", clientID));
+			LOGGER.error("remove [userState] {} fail.", clientID);
 			LOGGER.error(e.getMessage(), e);
 			throw new RedisSystemException(e.getMessage(), e);
 		}
@@ -105,16 +102,12 @@ public final class OnlineStateRepository {
 	}
 
 	public static final Set<String> get(String clientID) {
-		long start, end;
 		try {
-			start = System.currentTimeMillis();
 			String userID = buildUserID(clientID);
 			Set<String> result = redisRepository.sMembers(userID);
-			end = System.currentTimeMillis();
-			LOGGER.debug("get online state takes [{}] ms", end - start);
 			return result;
 		} catch (Exception e) {
-			LOGGER.error(String.format("query [isOnline] %s fail.", clientID));
+			LOGGER.error("query [isOnline] {} fail.", clientID);
 			LOGGER.error(e.getMessage(), e);
 			throw new RedisSystemException(e.getMessage(), e);
 		}
@@ -123,16 +116,12 @@ public final class OnlineStateRepository {
 
 	//查询该clientID所属域账号下的多终端登录策略,kick or prevent
 	public static final int getMutiClientAllowable(String clientID) {
-		long start, end;
 		try {
-			start = System.currentTimeMillis();
 			String accountArea = ClientIds.getAccountArea(clientID);
 			Optional<String> kickOrPrevent = Optional.of(AccountRepository.get(Constants.KEY_MUTI_CLIENT_ALLOWABLE, accountArea));
-			end = System.currentTimeMillis();
-			LOGGER.debug("get mutiClient takes [{}] ms", end - start);
 			return Integer.parseInt(kickOrPrevent.get());
 		} catch (Exception e) {
-			LOGGER.error(String.format("query [mutiClientAllowable] %s fail.", clientID));
+			LOGGER.error("query [mutiClientAllowable] {} fail.", clientID);
 			LOGGER.error(e.getMessage(), e);
 			//异常情况，默认kick
 			return Constants.KICK;

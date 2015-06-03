@@ -25,6 +25,7 @@ public final class AccountRepository {
 			redisRepository = RedisRepositoryFactory.getRepository(IMConfig.CACHE_ACCOUNT_AREA.get());
 			redisRepository.getRedisTemplate().setEnableTransactionSupport(true);
 			redisRepository.getRedisTemplate().setValueSerializer(new StringRedisSerializer());
+			redisRepository.getRedisTemplate().setHashValueSerializer(new StringRedisSerializer());
 
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);

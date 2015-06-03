@@ -36,7 +36,6 @@ public class AreaAuthenticator implements IAuthenticator {
 		httpClient = new OkHttpClient();
 		try {
 			client.init();
-//			url = client.getConfig("im-service", "common", "httpTokenAuthURL");
 			url = IMConfig.HTTP_TOKEN_AUTH_URL.get();
 			httpClient.setConnectTimeout(10, TimeUnit.SECONDS);
 			httpClient.setConnectionPool(ConnectionPool.getDefault());
