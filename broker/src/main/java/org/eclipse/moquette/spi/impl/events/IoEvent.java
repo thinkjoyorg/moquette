@@ -11,11 +11,16 @@ package org.eclipse.moquette.spi.impl.events;
 /**
  * base io event
  * <p/>
- * io event contains : ConnectIoEvent, ExtraIoEvent(disconnect and lost connection), SubscribeIoEvent
+ * io event used on publish, disconnect, lost connection, subscribe
+ *
+ * connectIoEvent used on connect
+ *
  */
 public class IoEvent extends MessagingEvent {
 	protected IoEventType type;
 	protected String clientID;
+
+	protected String topic;
 
 	public IoEvent(IoEventType type, String clientID) {
 		this.type = type;
@@ -38,16 +43,24 @@ public class IoEvent extends MessagingEvent {
 		this.clientID = clientID;
 	}
 
+	public String getTopic() {
+		return topic;
+	}
+
+	public void setTopic(String topic) {
+		this.topic = topic;
+	}
+
 	@Override
 	public String toString() {
 		return "IoEvent{" +
-				"type=" + type +
-				", clientID='" + clientID + '\'' +
+				"clientID='" + clientID + '\'' +
+				", type=" + type +
 				'}';
 	}
 
 	public enum IoEventType {
-		CONNECT, DISCONNECT, LOSTCONNECTION, SUBSCRIBE
+		CONNECT, DISCONNECT, LOSTCONNECTION, SUBSCRIBE, PUBLISH
 	}
 
 }

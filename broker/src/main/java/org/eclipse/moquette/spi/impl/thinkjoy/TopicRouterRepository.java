@@ -17,8 +17,8 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
  */
 
 public final class TopicRouterRepository {
-	public static final String NODE_ID = CloudContextFactory.getCloudContext().getId();
 	private static final Logger LOGGER = LoggerFactory.getLogger(TopicRouterRepository.class);
+	private static final String NODE_ID = CloudContextFactory.getCloudContext().getId();
 	private static RedisRepository<String, String> redisRepository;
 	static {
 		try {
@@ -32,10 +32,10 @@ public final class TopicRouterRepository {
 		}
 	}
 
-	public static final void addRoute(final String topic) {
+	public static final void add(final String topic) {
 		try {
-			final String key = buildTopicCounterKey(topic, NODE_ID);
-			redisRepository.incr(key, 1L);
+//			final String key = buildTopicCounterKey(topic, NODE_ID);
+//			redisRepository.incr(key, 1L);
 			redisRepository.sAdd(topic, NODE_ID);
 			LOGGER.trace("add [topic]:{} to [node]:{}", topic, NODE_ID);
 		} catch (Exception e) {
@@ -52,7 +52,8 @@ public final class TopicRouterRepository {
 	 *
 	 * @param topic
 	 */
-	public static final void cleanRouteTopicNode(final String topic) {
+	@Deprecated
+	public static final void clean(final String topic) {
 		try {
 			final String key = buildTopicCounterKey(topic, NODE_ID);
 			String val = redisRepository.get(key);
@@ -71,7 +72,21 @@ public final class TopicRouterRepository {
 		}
 	}
 
+	@Deprecated
 	private final static String buildTopicCounterKey(String topic, String nodeId) {
 		return new StringBuilder("topicNodeCounter").append(":").append(topic).append(nodeId).toString();
+	}
+
+	/**
+	 * remove the dead topic node record
+	 *
+	 * @param topic
+	 */
+	public static final void remove(final String topic) {
+		boolean result = redisRepository.sIsMember(topic, NODE_ID);
+		if (!result) {
+			redisRepository.sRem(topic, NODE_ID);
+		}
+		LOGGER.debug("clean topic [{}] node [{}]", topic, NODE_ID);
 	}
 }

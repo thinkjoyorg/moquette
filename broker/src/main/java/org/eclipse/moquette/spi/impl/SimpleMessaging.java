@@ -182,13 +182,18 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 			LOG.error(null, ex);
 		}
 		LOG.debug("after m_stopLatch");
+		this.destory();
+		m_processor.destory();
+		if (elapsed) {
+			LOG.error("Can't stop the server in 30 seconds");
+		}
+	}
+
+	private void destory() {
 		m_executor.shutdown();
 		io_executor.shutdown();
 		m_disruptor.shutdown();
 		io_disruptor.shutdown();
-		if (elapsed) {
-			LOG.error("Can't stop the server in 10 seconds");
-		}
 	}
 
 	@Override

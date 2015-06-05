@@ -71,7 +71,7 @@
         <dependency>
             <groupId>cn.thinkjoy.im</groupId>
             <artifactId>im-api</artifactId>
-            <version>0.2.2-SNAPSHOT</version>
+            <version>0.2.3-SNAPSHOT</version>
         </dependency>
 
         <dependency>

@@ -16,12 +16,16 @@
 package org.eclipse.moquette.spi.impl;
 
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+import cn.thinkjoy.cloudstack.context.CloudContextFactory;
 import cn.thinkjoy.im.api.client.IMClient;
 import cn.thinkjoy.im.common.ClientIds;
 import com.lmax.disruptor.EventHandler;
@@ -67,6 +71,7 @@ import static org.eclipse.moquette.parser.netty.Utils.VERSION_3_1_1;
 class ProtocolProcessor implements EventHandler<ValueEvent> {
 
 	private static final Logger LOG = LoggerFactory.getLogger(ProtocolProcessor.class);
+	private static final String NODE_ID = CloudContextFactory.getCloudContext().getId();
 
 	private ConcurrentHashMapV8<String, ConnectionDescriptor> m_clientIDs = new ConcurrentHashMapV8<>();
 	private SubscriptionsStore subscriptions;
@@ -78,6 +83,7 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 	private Map<String, WillMessage> m_willStore = new HashMap<>();
 	private ExecutorService mainExecutor, ioExecutor;
 	private RingBuffer<ValueEvent> mainRingBuffer, ioRingBuffer;
+	private Disruptor<ValueEvent> mainDisruptor, ioDisruptor;
 	private IMClient client;
 
 	ProtocolProcessor() {
@@ -103,10 +109,10 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 
 		//init the output ringbuffer
 		mainExecutor = Executors.newSingleThreadExecutor(new DefaultThreadFactory("ProtocolProcessor"));
-		ioExecutor = Executors.newFixedThreadPool(Constants.wThreads + 1, new DefaultThreadFactory("IoProcessor"));
+		ioExecutor = Executors.newFixedThreadPool(Constants.wThreads + 1, new DefaultThreadFactory("IoTaskProcessor"));
 
-		Disruptor<ValueEvent> mainDisruptor = new Disruptor<>(ValueEvent.EVENT_FACTORY, Constants.SIZE_RINGBUFFER, mainExecutor);
-		Disruptor<ValueEvent> ioDisruptor = new Disruptor<>(ValueEvent.EVENT_FACTORY, Constants.SIZE_RINGBUFFER, ioExecutor);
+		mainDisruptor = new Disruptor<>(ValueEvent.EVENT_FACTORY, Constants.SIZE_RINGBUFFER, mainExecutor);
+		ioDisruptor = new Disruptor<>(ValueEvent.EVENT_FACTORY, Constants.SIZE_RINGBUFFER, ioExecutor);
 
 		mainDisruptor.handleEventsWith(this);
 		mainDisruptor.start();
@@ -125,6 +131,24 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 		} catch (Exception e) {
 			LOG.error(e.getMessage(), e);
 			System.exit(-1);
+		}
+
+	}
+
+	void destory() {
+		try {
+			ioExecutor.shutdown();
+			mainExecutor.shutdown();
+
+			mainDisruptor.shutdown();
+			ioDisruptor.shutdown();
+
+			client.shutdown();
+
+			subscriptions = null;
+			m_messagesStore.close();
+		} catch (Throwable th) {
+			LOG.error("destory error", th);
 		}
 
 	}
@@ -194,12 +218,11 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 		m_clientIDs.put(msg.getClientID(), connDescr);
 
 		int keepAlive = msg.getKeepAlive();
-		LOG.trace("Connect with keepAlive {} s", keepAlive);
+//		LOG.trace("Connect with keepAlive {} s", keepAlive);
 		session.setAttribute(NettyChannel.ATTR_KEY_KEEPALIVE, keepAlive);
 		session.setAttribute(NettyChannel.ATTR_KEY_CLEANSESSION, msg.isCleanSession());
 		//used to track the client in the subscription and publishing phases.
 		session.setAttribute(NettyChannel.ATTR_KEY_CLIENTID, msg.getClientID());
-		LOG.trace("Connect create session [{}]", session);
 
 		session.setIdleTime(Math.round(keepAlive * 1.5f));
 
@@ -231,7 +254,6 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 //		}
 		session.write(okResp);
 
-		LOG.trace("Create persistent session for clientID [{}]", msg.getClientID());
 		m_sessionsStore.addNewSubscription(Subscription.createEmptySubscription(msg.getClientID(), true), msg.getClientID()); //null means EmptySubscription
 		LOG.info("Connected client ID [{}] with clean session {}", msg.getClientID(), msg.isCleanSession());
 		//TODO:此版本中不需要推送离线消息。
@@ -306,6 +328,10 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 		final ByteBuffer message = msg.getPayload();
 		boolean retain = msg.isRetainFlag();
 
+		IoEvent publishIoEvent = new IoEvent(IoEvent.IoEventType.PUBLISH, clientID);
+		publishIoEvent.setTopic(topic);
+		publishToIoDisruptor(publishIoEvent);
+
 		processPublish(clientID, topic, qos, message, retain, msg.getMessageID());
 	}
 
@@ -375,7 +401,8 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 //			LOG.debug("subscription tree {}", subscriptions.dumpTree());
 //		}
 
-		for (final Subscription sub : subscriptions.matches(topic)) {
+		List<Subscription> matched = subscriptions.matches(topic);
+		for (final Subscription sub : matched) {
 			if (qos.ordinal() > sub.getRequestedQos().ordinal()) {
 				qos = sub.getRequestedQos();
 			}
@@ -443,6 +470,7 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 		}
 		LOG.debug("Session for clientId {} is {}", clientId, m_clientIDs.get(clientId).getSession());
 //        m_clientIDs.get(clientId).getSession().write(pubMessage);
+
 		publishToMainDisruptor(new OutputMessagingEvent(m_clientIDs.get(clientId).getSession(), pubMessage));
 	}
 
@@ -543,10 +571,11 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 	void processDisconnect(final ServerChannel session, DisconnectMessage msg) throws InterruptedException {
 		String clientID = (String) session.getAttribute(NettyChannel.ATTR_KEY_CLIENTID);
 		boolean cleanSession = (Boolean) session.getAttribute(NettyChannel.ATTR_KEY_CLEANSESSION);
-		Set<Subscription> subscription = m_sessionsStore.getSubscriptionById(clientID);
-		ExtraIoEvent extraIoEvent = new ExtraIoEvent(IoEvent.IoEventType.DISCONNECT, clientID, subscription);
+//		Set<Subscription> subscription = m_sessionsStore.getSubscriptionById(clientID);
+//		ExtraIoEvent extraIoEvent = new ExtraIoEvent(IoEvent.IoEventType.DISCONNECT, clientID, subscription);
+		IoEvent ioEvent = new IoEvent(IoEvent.IoEventType.DISCONNECT, clientID);
 
-		publishToIoDisruptor(extraIoEvent);
+		publishToIoDisruptor(ioEvent);
 
 		if (cleanSession) {
 			//cleanup topic subscriptions
@@ -571,10 +600,11 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 		String clientID = evt.clientID;
 
 		//如果丢失连接必须也要清理客户端信息。
-		Set<Subscription> subscription = m_sessionsStore.getSubscriptionById(clientID);
-		ExtraIoEvent extraIoEvent = new ExtraIoEvent(IoEvent.IoEventType.LOSTCONNECTION, clientID, subscription);
+//		Set<Subscription> subscription = m_sessionsStore.getSubscriptionById(clientID);
+//		ExtraIoEvent extraIoEvent = new ExtraIoEvent(IoEvent.IoEventType.LOSTCONNECTION, clientID, subscription);
 
-		publishToIoDisruptor(extraIoEvent);
+		IoEvent ioEvent = new IoEvent(IoEvent.IoEventType.DISCONNECT, clientID);
+		publishToIoDisruptor(ioEvent);
 
 		if (m_clientIDs.containsKey(clientID)) {
 			if (!m_clientIDs.get(clientID).getSession().equals(evt.session)) {
@@ -619,7 +649,7 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 			for (String topic : topics) {
 				subscriptions.removeSubscription(topic, clientID);
 
-				TopicRouterRepository.cleanRouteTopicNode(topic);
+				TopicRouterRepository.clean(topic);
 			}
 		} finally {
 			lock.unlock();
@@ -651,7 +681,7 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 			Subscription newSubscription = new Subscription(clientID, req.getTopicFilter(), qos, cleanSession);
 			subscribeSingleTopic(newSubscription, req.getTopicFilter());
 
-			TopicRouterRepository.addRoute(req.getTopicFilter());
+			TopicRouterRepository.add(req.getTopicFilter());
 		}
 
 		//ack the client

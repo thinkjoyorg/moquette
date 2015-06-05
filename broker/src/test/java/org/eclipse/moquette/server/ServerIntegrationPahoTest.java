@@ -141,7 +141,8 @@ public class ServerIntegrationPahoTest {
 		options.setPassword("111111".toCharArray());
 
 		m_client.connect(options);
-		m_client.subscribe("/topic", 0);
+//		m_client.subscribe();
+		m_client.subscribe(null, 0);
 
         MqttMessage message = new MqttMessage("Hello world!!".getBytes());
         message.setQos(0);
