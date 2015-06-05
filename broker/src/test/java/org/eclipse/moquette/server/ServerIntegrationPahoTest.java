@@ -489,12 +489,13 @@ public class ServerIntegrationPahoTest {
 
 	@Test
 	public void testAreaAuthicatorSUCCESS() throws Exception {
-		String aClientID = ClientIds.generateClientId("xyy", "xyzhang", PlatformType.Android);
+		String aClientID = ClientIds.generateClientId("zl", "xyzhang", PlatformType.Android);
 		String tmpDir = System.getProperty("java.io.tmpdir");
 		MqttClientPersistence aStore = new MqttDefaultFilePersistence(tmpDir + File.separator + "anotherClient");
 		MqttClient aClient = new MqttClient("tcp://localhost:1883", aClientID, aStore);
 		MqttConnectOptions options = new MqttConnectOptions();
-		options.setUserName("xyy");
+		options.setConnectionTimeout(2);
+		options.setUserName("00000000");
 		options.setPassword("111111".toCharArray());
 		aClient.connect(options);
 	}

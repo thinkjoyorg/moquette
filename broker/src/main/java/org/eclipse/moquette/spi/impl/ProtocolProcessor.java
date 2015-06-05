@@ -29,6 +29,7 @@ import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.WorkHandler;
 import com.lmax.disruptor.dsl.Disruptor;
 import io.netty.util.concurrent.DefaultThreadFactory;
+import io.netty.util.internal.chmv8.ConcurrentHashMapV8;
 import org.eclipse.moquette.commons.Constants;
 import org.eclipse.moquette.proto.messages.*;
 import org.eclipse.moquette.proto.messages.AbstractMessage.QOSType;
@@ -67,7 +68,7 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 
 	private static final Logger LOG = LoggerFactory.getLogger(ProtocolProcessor.class);
 
-	private Map<String, ConnectionDescriptor> m_clientIDs = new HashMap<>();
+	private ConcurrentHashMapV8<String, ConnectionDescriptor> m_clientIDs = new ConcurrentHashMapV8<>();
 	private SubscriptionsStore subscriptions;
 	private IMessagesStore m_messagesStore;
 	private ISessionsStore m_sessionsStore;
