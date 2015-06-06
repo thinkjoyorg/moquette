@@ -28,7 +28,6 @@ import com.lmax.disruptor.WorkHandler;
 import com.lmax.disruptor.dsl.Disruptor;
 import com.lmax.disruptor.dsl.ProducerType;
 import io.netty.util.concurrent.DefaultThreadFactory;
-import org.HdrHistogram.Histogram;
 import org.eclipse.moquette.commons.Constants;
 import org.eclipse.moquette.proto.messages.AbstractMessage;
 import org.eclipse.moquette.server.IAuthenticator;
@@ -67,10 +66,10 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 	private static SimpleMessaging INSTANCE;
 	private final ProtocolProcessor m_processor = new ProtocolProcessor();
 	private final AnnotationSupport annotationSupport = new AnnotationSupport();
+	private final String formatString = "%d | %f |  %d \n";
 	CountDownLatch m_stopLatch;
-	Histogram histogram = new Histogram(5);
 	long delay = 0L;
-	String formatString = "%d | %f |  %d \n";
+	long count = 0L;
 	private SubscriptionsStore subscriptions;
 	private RingBuffer<ValueEvent> m_ringBuffer, io_ringBuffer;
 	private IMessagesStore m_storageService;
@@ -78,7 +77,6 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 	private ExecutorService m_executor, io_executor;
 	private Disruptor<ValueEvent> m_disruptor, io_disruptor;
 	private boolean benchmarkEnabled = false;
-	private long count = 0L;
 
 	private SimpleMessaging() {
 	}
