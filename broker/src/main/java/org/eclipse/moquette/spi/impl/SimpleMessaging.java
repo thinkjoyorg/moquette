@@ -69,6 +69,8 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 	private final AnnotationSupport annotationSupport = new AnnotationSupport();
 	CountDownLatch m_stopLatch;
 	Histogram histogram = new Histogram(5);
+	long delay = 0L;
+	String formatString = "%d | %f |  %d \n";
 	private SubscriptionsStore subscriptions;
 	private RingBuffer<ValueEvent> m_ringBuffer, io_ringBuffer;
 	private IMessagesStore m_storageService;
@@ -76,6 +78,7 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 	private ExecutorService m_executor, io_executor;
 	private Disruptor<ValueEvent> m_disruptor, io_disruptor;
 	private boolean benchmarkEnabled = false;
+	private long count = 0L;
 
 	private SimpleMessaging() {
 	}
@@ -215,15 +218,28 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 			if (evt instanceof ProtocolEvent) {
 				ServerChannel session = ((ProtocolEvent) evt).getSession();
 				AbstractMessage message = ((ProtocolEvent) evt).getMessage();
-				long delay = 0;
 				try {
-					long startTime = System.nanoTime();
-					annotationSupport.dispatch(session, message);
 					if (benchmarkEnabled) {
-						delay = System.nanoTime() - startTime;
-						histogram.recordValue(delay);
-						LOG.debug("process msgType {} takes: {} ms ", message.getMessageType(), (delay / 1000000));
+						++count;
+						long startTime = System.nanoTime();
+						annotationSupport.dispatch(session, message);
+						delay += System.nanoTime() - startTime;
+						if (count % 10 == 0) {
+							long p = m_ringBuffer.getCursor();
+							long backlog = Utils.count(p, l);
+							long l1 = delay / 10000000;
+							double r = 0.0;
+							if (l1 == 0) {
+								r = Double.POSITIVE_INFINITY;
+							} else {
+								r = count / l1;
+							}
+							System.out.format(formatString, count, r, backlog);
+						}
+					} else {
+						annotationSupport.dispatch(session, message);
 					}
+
 				} catch (Throwable th) {
 					LOG.error("Serious error processing the message {} for {}", message, session, th);
 				}
