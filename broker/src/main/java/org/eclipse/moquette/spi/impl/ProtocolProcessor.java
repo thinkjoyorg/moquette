@@ -325,11 +325,6 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 		final AbstractMessage.QOSType qos = msg.getQos();
 		final ByteBuffer message = msg.getPayload();
 		boolean retain = msg.isRetainFlag();
-
-		IoEvent publishIoEvent = new IoEvent(IoEvent.IoEventType.PUBLISH, clientID);
-		publishIoEvent.setTopic(topic);
-		publishToIoDisruptor(publishIoEvent);
-
 		processPublish(clientID, topic, qos, message, retain, msg.getMessageID());
 	}
 
