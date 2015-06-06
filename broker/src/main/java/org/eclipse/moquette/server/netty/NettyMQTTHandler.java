@@ -51,8 +51,8 @@ public class NettyMQTTHandler extends ChannelInboundHandlerAdapter {
 		try {
             switch (msg.getMessageType()) {
                 case CONNECT:
-                case SUBSCRIBE:
-                case UNSUBSCRIBE:
+	            case SUBSCRIBE:
+	            case UNSUBSCRIBE:
                 case PUBLISH:
                 case PUBREC:
                 case PUBCOMP:
@@ -72,7 +72,6 @@ public class NettyMQTTHandler extends ChannelInboundHandlerAdapter {
 //                        }
 //                        channel = m_channelMapper.get(getKey(ctx));
 //                    }
-
                     m_messaging.handleProtocolMessage(channel, msg);
                     break;
                 case PINGREQ:

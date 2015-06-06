@@ -57,14 +57,19 @@ public final class TopicRouterRepository {
 		try {
 			final String key = buildTopicCounterKey(topic, NODE_ID);
 			String val = redisRepository.get(key);
-			if (null != val && Integer.parseInt(val.toString()) > 1) {
-				redisRepository.incr(key, -1L);
-			} else {
-				if (redisRepository.sIsMember(topic, NODE_ID)) {
-					redisRepository.sRem(topic, NODE_ID);
+			if (null != val) {
+				if (Integer.parseInt(val.toString()) > 1) {
+					redisRepository.incr(key, -1L);
+				} else {
+					//clear counter
+					redisRepository.del(key);
+					//clear data
+					if (redisRepository.sIsMember(topic, NODE_ID)) {
+						redisRepository.sRem(topic, NODE_ID);
+					}
 				}
+				LOGGER.debug("del [topic]:{} on [node]:{}", topic, NODE_ID);
 			}
-			LOGGER.trace("del [topic]:{} on [node]:{}", topic, NODE_ID);
 		} catch (Exception e) {
 			LOGGER.error("clean [topic router] {} fail.", topic);
 			LOGGER.error(e.getMessage(), e);
@@ -73,7 +78,7 @@ public final class TopicRouterRepository {
 	}
 
 	private final static String buildTopicCounterKey(String topic, String nodeId) {
-		return new StringBuilder("tnc").append(":").append(topic).append(nodeId).toString();
+		return new StringBuilder("tnc").append(":").append(topic).append(":").append(nodeId).toString();
 	}
 
 	/**

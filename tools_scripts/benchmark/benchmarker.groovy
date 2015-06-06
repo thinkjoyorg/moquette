@@ -7,12 +7,15 @@ import org.eclipse.paho.client.mqttv3.MqttAsyncClient
 import org.eclipse.paho.client.mqttv3.MqttAsyncClient
 @GrabResolver(name = 'Paho', root = 'https://repo.eclipse.org/content/repositories/paho-snapshots/')
 @Grab(group = 'org.eclipse.paho', module = 'org.eclipse.paho.client.mqttv3', version = '1.0.1')
-//@GrabResolver(name='Paho', root='https://repo.eclipse.org/content/repositories/paho-releases/')
-//@Grab(group='org.eclipse.paho', module='mqtt-client', version='0.4.0')
-
 import org.eclipse.paho.client.mqttv3.MqttAsyncClient
 @GrabResolver(name = 'Paho', root = 'https://repo.eclipse.org/content/repositories/paho-snapshots/')
 @Grab(group = 'org.eclipse.paho', module = 'org.eclipse.paho.client.mqttv3', version = '1.0.1')
+import org.eclipse.paho.client.mqttv3.MqttAsyncClient
+@GrabResolver(name = 'Paho', root = 'https://repo.eclipse.org/content/repositories/paho-snapshots/')
+@Grab(group = 'org.eclipse.paho', module = 'org.eclipse.paho.client.mqttv3', version = '1.0.1')
+//@GrabResolver(name='Paho', root='https://repo.eclipse.org/content/repositories/paho-releases/')
+//@Grab(group='org.eclipse.paho', module='mqtt-client', version='0.4.0')
+
 import org.eclipse.paho.client.mqttv3.MqttAsyncClient
 @GrabResolver(name = 'Paho', root = 'https://repo.eclipse.org/content/repositories/paho-snapshots/')
 @Grab(group = 'org.eclipse.paho', module = 'org.eclipse.paho.client.mqttv3', version = '1.0.1')
