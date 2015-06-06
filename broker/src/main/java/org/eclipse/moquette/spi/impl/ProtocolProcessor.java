@@ -16,10 +16,7 @@
 package org.eclipse.moquette.spi.impl;
 
 import java.nio.ByteBuffer;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.locks.Lock;
@@ -567,11 +564,11 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 	void processDisconnect(final ServerChannel session, DisconnectMessage msg) throws InterruptedException {
 		String clientID = (String) session.getAttribute(NettyChannel.ATTR_KEY_CLIENTID);
 		boolean cleanSession = (Boolean) session.getAttribute(NettyChannel.ATTR_KEY_CLEANSESSION);
-//		Set<Subscription> subscription = m_sessionsStore.getSubscriptionById(clientID);
-//		ExtraIoEvent extraIoEvent = new ExtraIoEvent(IoEvent.IoEventType.DISCONNECT, clientID, subscription);
-		IoEvent ioEvent = new IoEvent(IoEvent.IoEventType.DISCONNECT, clientID);
+		Set<Subscription> subscription = m_sessionsStore.getSubscriptionById(clientID);
+		ExtraIoEvent extraIoEvent = new ExtraIoEvent(IoEvent.IoEventType.DISCONNECT, clientID, subscription);
+//		IoEvent ioEvent = new IoEvent(IoEvent.IoEventType.DISCONNECT, clientID);
 
-		publishToIoDisruptor(ioEvent);
+		publishToIoDisruptor(extraIoEvent);
 
 		if (cleanSession) {
 			//cleanup topic subscriptions
@@ -596,11 +593,11 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 		String clientID = evt.clientID;
 
 		//如果丢失连接必须也要清理客户端信息。
-//		Set<Subscription> subscription = m_sessionsStore.getSubscriptionById(clientID);
-//		ExtraIoEvent extraIoEvent = new ExtraIoEvent(IoEvent.IoEventType.LOSTCONNECTION, clientID, subscription);
+		Set<Subscription> subscription = m_sessionsStore.getSubscriptionById(clientID);
+		ExtraIoEvent extraIoEvent = new ExtraIoEvent(IoEvent.IoEventType.LOSTCONNECTION, clientID, subscription);
 
-		IoEvent ioEvent = new IoEvent(IoEvent.IoEventType.DISCONNECT, clientID);
-		publishToIoDisruptor(ioEvent);
+//		IoEvent ioEvent = new IoEvent(IoEvent.IoEventType.DISCONNECT, clientID);
+		publishToIoDisruptor(extraIoEvent);
 
 		if (m_clientIDs.containsKey(clientID)) {
 			if (!m_clientIDs.get(clientID).getSession().equals(evt.session)) {
