@@ -20,8 +20,6 @@ public class IoEvent extends MessagingEvent {
 	protected IoEventType type;
 	protected String clientID;
 
-	protected String topic;
-
 	public IoEvent(IoEventType type, String clientID) {
 		this.type = type;
 		this.clientID = clientID;
@@ -41,14 +39,6 @@ public class IoEvent extends MessagingEvent {
 
 	public void setClientID(String clientID) {
 		this.clientID = clientID;
-	}
-
-	public String getTopic() {
-		return topic;
-	}
-
-	public void setTopic(String topic) {
-		this.topic = topic;
 	}
 
 	@Override

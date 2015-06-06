@@ -9,8 +9,10 @@ import com.lmax.disruptor.WorkHandler;
 import org.eclipse.moquette.commons.Constants;
 import org.eclipse.moquette.proto.MQTTException;
 import org.eclipse.moquette.spi.impl.events.ConnectIoEvent;
+import org.eclipse.moquette.spi.impl.events.ExtraIoEvent;
 import org.eclipse.moquette.spi.impl.events.IoEvent;
 import org.eclipse.moquette.spi.impl.events.MessagingEvent;
+import org.eclipse.moquette.spi.impl.subscriptions.Subscription;
 import org.eclipse.moquette.spi.impl.thinkjoy.OnlineStateRepository;
 import org.eclipse.moquette.spi.impl.thinkjoy.TopicRouterRepository;
 import org.slf4j.Logger;
@@ -53,7 +55,6 @@ public class IoTaskProcessor implements WorkHandler<ValueEvent> {
 			IoEvent ioEvent = (IoEvent) evt;
 			IoEvent.IoEventType type = ioEvent.getType();
 			String clientID = ioEvent.getClientID();
-			String topic = ioEvent.getTopic();
 			switch (type) {
 				case CONNECT:
 					//处理不允许多终端登录的场景的策略。1:kick,2:prevent
@@ -88,14 +89,13 @@ public class IoTaskProcessor implements WorkHandler<ValueEvent> {
 					break;
 
 				case DISCONNECT:
-//					ExtraIoEvent extraIoEvent = (ExtraIoEvent) ioEvent;
-//					Set<Subscription> subscriptions = extraIoEvent.getSubscriptions();
+					ExtraIoEvent extraIoEvent = (ExtraIoEvent) ioEvent;
+					Set<Subscription> subscriptions = extraIoEvent.getSubscriptions();
 //					long s1 = System.currentTimeMillis();
-//
-//
-//					for (Subscription s : subscriptions) {
-//						TopicRouterRepository.clean(s.getTopicFilter());
-//					}
+
+					for (Subscription s : subscriptions) {
+						TopicRouterRepository.clean(s.getTopicFilter());
+					}
 //					long e1 = System.currentTimeMillis();
 //					LOG.debug("DISCONNECT clean TopicNode takse [{}] ms", (e1 - s1));
 					//clear onlineState
@@ -103,23 +103,23 @@ public class IoTaskProcessor implements WorkHandler<ValueEvent> {
 					break;
 
 				case LOSTCONNECTION:
-//					ExtraIoEvent connLostIoEvent = (ExtraIoEvent) ioEvent;
-//					Set<Subscription> lostConnSubs = connLostIoEvent.getSubscriptions();
+					ExtraIoEvent connLostIoEvent = (ExtraIoEvent) ioEvent;
+					Set<Subscription> lostConnSubs = connLostIoEvent.getSubscriptions();
 //					long ss1 = System.currentTimeMillis();
-//					if (lostConnSubs != null) {
-//						for (Subscription s : lostConnSubs) {
-//							TopicRouterRepository.clean(s.getTopicFilter());
-//						}
-//					}
+					if (lostConnSubs != null) {
+						for (Subscription s : lostConnSubs) {
+							TopicRouterRepository.clean(s.getTopicFilter());
+						}
+					}
 //					long ee1 = System.currentTimeMillis();
 //					LOG.debug("Lost Connection clean TopicNode takes [{}] ms", (ee1 - ss1));
 					//clear onlineState
 					OnlineStateRepository.remove(clientID);
 
 					break;
-				case PUBLISH:
-					TopicRouterRepository.remove(topic);
-					break;
+//				case PUBLISH:
+//					TopicRouterRepository.remove(topic);
+//					break;
 			}
 		} finally {
 			event.setEvent(null);
