@@ -18,7 +18,7 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 public final class TopicRouterRepository {
 	private static final Logger LOGGER = LoggerFactory.getLogger(TopicRouterRepository.class);
-	private static final String NODE_ID = CloudContextFactory.getCloudContext().getId();
+	private static String NODE_ID = null;
 	private static RedisRepository<String, String> redisRepository;
 	static {
 		try {
@@ -26,6 +26,7 @@ public final class TopicRouterRepository {
 			redisRepository.getRedisTemplate().setEnableTransactionSupport(true);
 			redisRepository.getRedisTemplate().setValueSerializer(new StringRedisSerializer());
 
+			NODE_ID = CloudContextFactory.getCloudContext().getId();
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
 			System.exit(-1);
@@ -34,8 +35,8 @@ public final class TopicRouterRepository {
 
 	public static final void add(final String topic) {
 		try {
-//			final String key = buildTopicCounterKey(topic, NODE_ID);
-//			redisRepository.incr(key, 1L);
+			final String key = buildTopicCounterKey(topic, NODE_ID);
+			redisRepository.incr(key, 1L);
 			redisRepository.sAdd(topic, NODE_ID);
 			LOGGER.trace("add [topic]:{} to [node]:{}", topic, NODE_ID);
 		} catch (Exception e) {
@@ -47,20 +48,19 @@ public final class TopicRouterRepository {
 
 	/**
 	 * 清除客户端所的topic信息
-	 * 注意： 先要判断topic和nodeid组成的key上的计数器是否为0，如果为0，那么可以清除掉该信息，
-	 *       如果不为0，不能清除该信息，只需将计数器-1即可。
+	 * 注意： 先要判断topic和nodeid组成的key上的计数器是否大于1，如果大于1，那么可以清除掉该信息，
+	 *       否则需将计数器-1即可。
 	 *
 	 * @param topic
 	 */
-	@Deprecated
 	public static final void clean(final String topic) {
 		try {
 			final String key = buildTopicCounterKey(topic, NODE_ID);
 			String val = redisRepository.get(key);
-			if (null != val && Integer.parseInt(val.toString()) != 0) {
+			if (null != val && Integer.parseInt(val.toString()) > 1) {
 				redisRepository.incr(key, -1L);
 			} else {
-				if (redisRepository.sMembers(topic) != null && redisRepository.sMembers(topic).size() > 0) {
+				if (redisRepository.sIsMember(topic, NODE_ID)) {
 					redisRepository.sRem(topic, NODE_ID);
 				}
 			}
@@ -72,9 +72,8 @@ public final class TopicRouterRepository {
 		}
 	}
 
-	@Deprecated
 	private final static String buildTopicCounterKey(String topic, String nodeId) {
-		return new StringBuilder("topicNodeCounter").append(":").append(topic).append(nodeId).toString();
+		return new StringBuilder("tnc").append(":").append(topic).append(nodeId).toString();
 	}
 
 	/**
@@ -86,7 +85,7 @@ public final class TopicRouterRepository {
 		boolean result = redisRepository.sIsMember(topic, NODE_ID);
 		if (!result) {
 			redisRepository.sRem(topic, NODE_ID);
+			LOGGER.debug("clean topic [{}] node [{}]", topic, NODE_ID);
 		}
-		LOGGER.debug("clean topic [{}] node [{}]", topic, NODE_ID);
 	}
 }

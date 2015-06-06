@@ -7,15 +7,18 @@ import org.eclipse.paho.client.mqttv3.MqttAsyncClient
 import org.eclipse.paho.client.mqttv3.MqttAsyncClient
 @GrabResolver(name = 'Paho', root = 'https://repo.eclipse.org/content/repositories/paho-snapshots/')
 @Grab(group = 'org.eclipse.paho', module = 'org.eclipse.paho.client.mqttv3', version = '1.0.1')
-import org.eclipse.paho.client.mqttv3.MqttAsyncClient
-@GrabResolver(name = 'Paho', root = 'https://repo.eclipse.org/content/repositories/paho-snapshots/')
-@Grab(group = 'org.eclipse.paho', module = 'org.eclipse.paho.client.mqttv3', version = '1.0.1')
-import org.eclipse.paho.client.mqttv3.MqttAsyncClient
-@GrabResolver(name = 'Paho', root = 'https://repo.eclipse.org/content/repositories/paho-snapshots/')
-@Grab(group = 'org.eclipse.paho', module = 'org.eclipse.paho.client.mqttv3', version = '1.0.1')
 //@GrabResolver(name='Paho', root='https://repo.eclipse.org/content/repositories/paho-releases/')
 //@Grab(group='org.eclipse.paho', module='mqtt-client', version='0.4.0')
 
+import org.eclipse.paho.client.mqttv3.MqttAsyncClient
+@GrabResolver(name = 'Paho', root = 'https://repo.eclipse.org/content/repositories/paho-snapshots/')
+@Grab(group = 'org.eclipse.paho', module = 'org.eclipse.paho.client.mqttv3', version = '1.0.1')
+import org.eclipse.paho.client.mqttv3.MqttAsyncClient
+@GrabResolver(name = 'Paho', root = 'https://repo.eclipse.org/content/repositories/paho-snapshots/')
+@Grab(group = 'org.eclipse.paho', module = 'org.eclipse.paho.client.mqttv3', version = '1.0.1')
+import org.eclipse.paho.client.mqttv3.MqttAsyncClient
+@GrabResolver(name = 'Paho', root = 'https://repo.eclipse.org/content/repositories/paho-snapshots/')
+@Grab(group = 'org.eclipse.paho', module = 'org.eclipse.paho.client.mqttv3', version = '1.0.1')
 import org.eclipse.paho.client.mqttv3.MqttAsyncClient
 import org.eclipse.paho.client.mqttv3.MqttCallback
 import org.eclipse.paho.client.mqttv3.MqttMessage
@@ -108,7 +111,10 @@ String clientId = clientId_prefix + rnd
 MqttAsyncClient client = new MqttAsyncClient("tcp://${host}:1883", clientId, dataStore)
 def callback = new SubscriberCallback()
 client.callback = callback
-client.connect().waitForCompletion(1000);
+MqttConnectOptions options = new MqttConnectOptions();
+options.setUserName("00000000");
+options.setPassword("111111".toCharArray());
+client.connect(options).waitForCompletion(1000);
 client.subscribe("topic", 0)
 println "subscribed to topic"
 client.subscribe("/exit", 0)

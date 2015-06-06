@@ -4,6 +4,7 @@ import java.util.Set;
 
 import cn.thinkjoy.cloudstack.cache.RedisRepository;
 import cn.thinkjoy.cloudstack.cache.RedisRepositoryFactory;
+import cn.thinkjoy.cloudstack.context.CloudContextFactory;
 import cn.thinkjoy.im.common.ClientIds;
 import cn.thinkjoy.im.common.IMConfig;
 import com.google.common.base.Optional;
@@ -23,9 +24,8 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 public final class OnlineStateRepository {
 	private static final Logger LOGGER = LoggerFactory.getLogger(OnlineStateRepository.class);
-
-	private static final String STR = "_";
-
+	private static final String STR = ":";
+	private static String NODE_ID = null;
 	private static RedisRepository<String, String> redisRepository;
 
 	static {
@@ -33,6 +33,8 @@ public final class OnlineStateRepository {
 			redisRepository = RedisRepositoryFactory.getRepository(IMConfig.CACHE_USER_PRESENCE.get());
 			redisRepository.getRedisTemplate().setEnableTransactionSupport(true);
 			redisRepository.getRedisTemplate().setValueSerializer(new StringRedisSerializer());
+
+			NODE_ID = CloudContextFactory.getCloudContext().getId();
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
 			System.exit(-1);
@@ -54,7 +56,7 @@ public final class OnlineStateRepository {
 			redisRepository.sAdd(userID, clientID);
 			LOGGER.debug("[User]:{} is online on [clientID]:{}", userID, clientID);
 		} catch (Exception e) {
-			LOGGER.error(String.format("put [userState] %s fail.", clientID));
+			LOGGER.error("put [userState] {} fail.", clientID);
 			LOGGER.error(e.getMessage(), e);
 			throw new RedisSystemException(e.getMessage(), e);
 		}
@@ -78,6 +80,8 @@ public final class OnlineStateRepository {
 		StringBuilder builder = new StringBuilder(accountArea);
 		builder.append(STR);
 		builder.append(account);
+		builder.append(STR);
+		builder.append(NODE_ID);
 		return builder.toString();
 	}
 

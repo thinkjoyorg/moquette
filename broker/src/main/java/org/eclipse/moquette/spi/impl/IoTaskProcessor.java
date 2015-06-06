@@ -53,6 +53,7 @@ public class IoTaskProcessor implements WorkHandler<ValueEvent> {
 			IoEvent ioEvent = (IoEvent) evt;
 			IoEvent.IoEventType type = ioEvent.getType();
 			String clientID = ioEvent.getClientID();
+			String topic = ioEvent.getTopic();
 			switch (type) {
 				case CONNECT:
 					//处理不允许多终端登录的场景的策略。1:kick,2:prevent
@@ -117,7 +118,7 @@ public class IoTaskProcessor implements WorkHandler<ValueEvent> {
 
 					break;
 				case PUBLISH:
-					TopicRouterRepository.remove(clientID);
+					TopicRouterRepository.remove(topic);
 					break;
 			}
 		} finally {

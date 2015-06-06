@@ -25,7 +25,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import cn.thinkjoy.cloudstack.context.CloudContextFactory;
 import cn.thinkjoy.im.api.client.IMClient;
 import cn.thinkjoy.im.common.ClientIds;
 import com.lmax.disruptor.EventHandler;
@@ -71,7 +70,6 @@ import static org.eclipse.moquette.parser.netty.Utils.VERSION_3_1_1;
 class ProtocolProcessor implements EventHandler<ValueEvent> {
 
 	private static final Logger LOG = LoggerFactory.getLogger(ProtocolProcessor.class);
-	private static final String NODE_ID = CloudContextFactory.getCloudContext().getId();
 
 	private ConcurrentHashMapV8<String, ConnectionDescriptor> m_clientIDs = new ConcurrentHashMapV8<>();
 	private SubscriptionsStore subscriptions;
@@ -143,12 +141,12 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 			mainDisruptor.shutdown();
 			ioDisruptor.shutdown();
 
-			client.shutdown();
-
 			subscriptions = null;
 			m_messagesStore.close();
+
+			client.shutdown();
 		} catch (Throwable th) {
-			LOG.error("destory error", th);
+			LOG.warn("destory error", th);
 		}
 
 	}
@@ -402,6 +400,9 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 //		}
 
 		List<Subscription> matched = subscriptions.matches(topic);
+//		for (Subscription subscription : matched) {
+//			subscription.getClientId()
+//		}
 		for (final Subscription sub : matched) {
 			if (qos.ordinal() > sub.getRequestedQos().ordinal()) {
 				qos = sub.getRequestedQos();
