@@ -138,7 +138,6 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 			mainDisruptor.shutdown();
 			ioDisruptor.shutdown();
 
-			subscriptions = null;
 			m_messagesStore.close();
 
 			client.shutdown();
