@@ -245,6 +245,9 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 				}
 			}
 		} finally {
+			/**
+			 * avoid memory leak
+			 */
 			t.setEvent(null);
 		}
 

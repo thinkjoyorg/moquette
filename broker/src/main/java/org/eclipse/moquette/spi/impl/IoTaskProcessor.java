@@ -57,11 +57,8 @@ public class IoTaskProcessor implements WorkHandler<ValueEvent> {
 					//处理不允许多终端登录的场景的策略。1:kick,2:prevent
 					//如果该域下同一个账号多终端登录的策略是kick得话
 					if (!ClientIds.getAccountArea(clientID).equals(Constants.SYS_AREA)) {
-						long start = System.currentTimeMillis();
 						int mutiClientAllowable = OnlineStateRepository.getMutiClientAllowable(clientID);
 						Set<String> oldClientIDs = OnlineStateRepository.get(clientID);
-						long end = System.currentTimeMillis();
-						LOG.debug("mutilClient takes [{}] ms, and oldClientIDs's size is [{}]", (end - start), oldClientIDs.size());
 						if (oldClientIDs.size() > 0) {
 							if (Constants.KICK == mutiClientAllowable) {
 								ConnectIoEvent connectIoEvent = (ConnectIoEvent) evt;
@@ -88,13 +85,10 @@ public class IoTaskProcessor implements WorkHandler<ValueEvent> {
 				case DISCONNECT:
 					ExtraIoEvent extraIoEvent = (ExtraIoEvent) ioEvent;
 					Set<Subscription> subscriptions = extraIoEvent.getSubscriptions();
-//					long s1 = System.currentTimeMillis();
 
 					for (Subscription s : subscriptions) {
 						TopicRouterRepository.clean(s.getTopicFilter());
 					}
-//					long e1 = System.currentTimeMillis();
-//					LOG.debug("DISCONNECT clean TopicNode takse [{}] ms", (e1 - s1));
 					//clear onlineState
 					OnlineStateRepository.remove(clientID);
 					break;
@@ -102,14 +96,11 @@ public class IoTaskProcessor implements WorkHandler<ValueEvent> {
 				case LOSTCONNECTION:
 					ExtraIoEvent connLostIoEvent = (ExtraIoEvent) ioEvent;
 					Set<Subscription> lostConnSubs = connLostIoEvent.getSubscriptions();
-//					long ss1 = System.currentTimeMillis();
 					if (lostConnSubs != null) {
 						for (Subscription s : lostConnSubs) {
 							TopicRouterRepository.clean(s.getTopicFilter());
 						}
 					}
-//					long ee1 = System.currentTimeMillis();
-//					LOG.debug("Lost Connection clean TopicNode takes [{}] ms", (ee1 - ss1));
 					//clear onlineState
 					OnlineStateRepository.remove(clientID);
 
@@ -119,6 +110,9 @@ public class IoTaskProcessor implements WorkHandler<ValueEvent> {
 //					break;
 			}
 		} finally {
+			/**
+			 * 防止内存溢出
+			 */
 			event.setEvent(null);
 		}
 

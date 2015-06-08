@@ -24,12 +24,8 @@ public class IoMessagingProcessor implements WorkHandler<ValueEvent> {
 			ServerChannel session = evt.getSession();
 			AbstractMessage message = evt.getMessage();
 			AnnotationSupport annotationSupport = evt.annotationSupport;
-			long delay = 0;
 			try {
-				long startTime = System.nanoTime();
-				delay = System.nanoTime() - startTime;
 				annotationSupport.dispatch(session, message);
-				LOG.debug("IoMessagingProcessor process msgType {} takes: {} ms ", message.getMessageType(), (delay / 1000000));
 			} catch (Throwable th) {
 				LOG.error("IoMessagingProcessor Serious error processing the message {} for {}", message, session, th);
 			}
