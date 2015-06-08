@@ -12,7 +12,7 @@ import org.slf4j.LoggerFactory;
  */
 
 public class DisruptorExceptionHandler implements ExceptionHandler<ValueEvent> {
-	private static final Logger LOG = LoggerFactory.getLogger(IoTaskProcessor.class);
+	private static final Logger LOG = LoggerFactory.getLogger(DisruptorExceptionHandler.class);
 
 
 	@Override
