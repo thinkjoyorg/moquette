@@ -59,6 +59,6 @@ MOQUETTE_PATH=$MOQUETTE_HOME/
 #LOG_FILE_LEVEL=fine
 JAVA_OPTS_SCRIPT="-XX:+HeapDumpOnOutOfMemoryError -Djava.awt.headless=true"
 
-$JAVA -server -Xmx4096m -Xms4096m -XX:+DisableExplicitGC -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:+PrintHeapAtGC -Xloggc:gc.log $JAVA_OPTS $JAVA_OPTS_SCRIPT -Dmoquette.processor.benchmark=true -Dlogback.configurationFile="file:$LOG_FILE" -Djava.rmi.server.hostname=10.10.71.9 -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=10086 -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.authenticate=false -Dmoquette.path="$MOQUETTE_PATH" -cp "$MOQUETTE_HOME/lib/moquette-broker-0.7-SNAPSHOT.jar:$MOQUETTE_HOME/lib/*" org.eclipse.moquette.server.Server
+$JAVA -server -Xmx4096m -Xms4096m -XX:+DisableExplicitGC -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:+PrintHeapAtGC -Xloggc:gc.log $JAVA_OPTS $JAVA_OPTS_SCRIPT -Dio.netty.allocator.type=pooled -Dmoquette.processor.benchmark=true -Dlogback.configurationFile="file:$LOG_FILE" -Djava.rmi.server.hostname=10.10.71.9 -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=10086 -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.authenticate=false -Dmoquette.path="$MOQUETTE_PATH" -cp "$MOQUETTE_HOME/lib/moquette-broker-0.7-SNAPSHOT.jar:$MOQUETTE_HOME/lib/*" org.eclipse.moquette.server.Server
 
 
