@@ -8,7 +8,6 @@ import cn.thinkjoy.im.protocol.system.KickOrder;
 import com.lmax.disruptor.WorkHandler;
 import org.eclipse.moquette.commons.Constants;
 import org.eclipse.moquette.proto.MQTTException;
-import org.eclipse.moquette.spi.impl.events.ConnectIoEvent;
 import org.eclipse.moquette.spi.impl.events.ExtraIoEvent;
 import org.eclipse.moquette.spi.impl.events.IoEvent;
 import org.eclipse.moquette.spi.impl.events.MessagingEvent;
@@ -27,11 +26,22 @@ import org.slf4j.LoggerFactory;
 
 public class IoTaskProcessor implements WorkHandler<ValueEvent> {
 	private static final Logger LOG = LoggerFactory.getLogger(IoTaskProcessor.class);
+	private static IMClient client = null;
+
+	static {
+		client = IMClient.get();
+		try {
+			client.prepare();
+		} catch (Exception e) {
+			LOG.error(e.getMessage(), e);
+			System.exit(-1);
+		}
+	}
 
 	/**
 	 * publish to connect conflict message kickOrder
 	 */
-	private final void publishForConnectConflict(String clientID, IMClient client) {
+	private final void publishForConnectConflict(String clientID) {
 		LOG.info("publishForConnectConflict for client [{}]", clientID);
 		// 等待actor就绪
 		try {
@@ -61,10 +71,8 @@ public class IoTaskProcessor implements WorkHandler<ValueEvent> {
 						Set<String> oldClientIDs = OnlineStateRepository.get(clientID);
 						if (oldClientIDs.size() > 0) {
 							if (Constants.KICK == mutiClientAllowable) {
-								ConnectIoEvent connectIoEvent = (ConnectIoEvent) evt;
-								IMClient client = connectIoEvent.getClient();
 								for (String oldClientID : oldClientIDs) {
-									publishForConnectConflict(oldClientID, client);
+									publishForConnectConflict(oldClientID);
 								}
 
 							} else if (Constants.PREVENT == mutiClientAllowable) {

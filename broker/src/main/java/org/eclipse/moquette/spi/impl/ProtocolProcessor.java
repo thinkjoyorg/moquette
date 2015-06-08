@@ -22,7 +22,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import cn.thinkjoy.im.api.client.IMClient;
 import cn.thinkjoy.im.common.ClientIds;
 import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.RingBuffer;
@@ -79,7 +78,6 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 	private ExecutorService mainExecutor, ioExecutor;
 	private RingBuffer<ValueEvent> mainRingBuffer, ioRingBuffer;
 	private Disruptor<ValueEvent> mainDisruptor, ioDisruptor;
-	private IMClient client;
 
 	ProtocolProcessor() {
 	}
@@ -122,14 +120,6 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 		mainRingBuffer = mainDisruptor.getRingBuffer();
 		ioRingBuffer = ioDisruptor.getRingBuffer();
 
-		client = IMClient.get();
-		try {
-			client.prepare();
-		} catch (Exception e) {
-			LOG.error(e.getMessage(), e);
-			System.exit(-1);
-		}
-
 	}
 
 	void destory() {
@@ -142,7 +132,6 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 
 			m_messagesStore.close();
 
-			client.shutdown();
 		} catch (Throwable th) {
 			LOG.warn("destory error", th);
 		}
@@ -210,6 +199,10 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 
 			LOG.debug("Existing connection with same client ID [{}], forced to close", msg.getClientID());
 		}
+
+		IoEvent ioEvent = new IoEvent(IoEvent.IoEventType.CONNECT, msg.getClientID());
+		publishToIoDisruptor(ioEvent);
+
 		ConnectionDescriptor connDescr = new ConnectionDescriptor(msg.getClientID(), session, msg.isCleanSession());
 		m_clientIDs.put(msg.getClientID(), connDescr);
 
@@ -257,9 +250,6 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 //		    //force the republish of stored QoS1 and QoS2
 //            republishStoredInSession(msg.getClientID());
 //        }
-		ConnectIoEvent ioEvent = new ConnectIoEvent(IoEvent.IoEventType.CONNECT, msg.getClientID(), client);
-
-		publishToIoDisruptor(ioEvent);
 //
 	}
 

@@ -8,7 +8,7 @@ import cn.thinkjoy.im.api.client.IMClient;
  *
  * @version 1.0
  */
-
+@Deprecated
 public class ConnectIoEvent extends IoEvent {
 
 	protected IMClient client;
