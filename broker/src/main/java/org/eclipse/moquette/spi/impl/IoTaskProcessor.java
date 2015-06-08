@@ -43,7 +43,6 @@ public class IoTaskProcessor implements WorkHandler<ValueEvent> {
 	 */
 	private final void publishForConnectConflict(String clientID) {
 		LOG.info("publishForConnectConflict for client [{}]", clientID);
-		// 等待actor就绪
 		try {
 			String from = ClientIds.getAccount(clientID);
 			String areaAccount = ClientIds.getAccountArea(clientID);
