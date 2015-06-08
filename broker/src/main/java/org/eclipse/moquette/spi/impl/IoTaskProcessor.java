@@ -31,7 +31,7 @@ public class IoTaskProcessor implements WorkHandler<ValueEvent> {
 	static {
 		client = IMClient.get();
 		try {
-//			client.prepare();
+			client.prepare();
 		} catch (Exception e) {
 			LOG.error(e.getMessage(), e);
 			System.exit(-1);
