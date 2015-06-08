@@ -112,6 +112,7 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 		mainDisruptor.start();
 //		ioDisruptor.handleEventsWith(new IoTaskProcessor());
 		WorkHandler[] handlers = create();
+
 		ioDisruptor.handleEventsWithWorkerPool(handlers);
 		ioDisruptor.handleExceptionsWith(new DisruptorExceptionHandler());
 		ioDisruptor.start();
@@ -131,6 +132,8 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 			ioDisruptor.shutdown();
 
 			m_messagesStore.close();
+
+			IoTaskProcessor.closeIMClient();
 
 		} catch (Throwable th) {
 			LOG.warn("destory error", th);
@@ -590,23 +593,17 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 //		IoEvent ioEvent = new IoEvent(IoEvent.IoEventType.DISCONNECT, clientID);
 		publishToIoDisruptor(extraIoEvent);
 
-		if (m_clientIDs.containsKey(clientID)) {
-			if (!m_clientIDs.get(clientID).getSession().equals(evt.session)) {
-				LOG.info("Received a lost connection with client [{}] for a not matching session", clientID);
-				return;
-			}
-		}
-
 		//If already removed a disconnect message was already processed for this clientID
-		if (m_clientIDs.remove(clientID) != null) {
+		m_clientIDs.remove(clientID);
+//		if () {
 //
 //			//de-activate the subscriptions for this ClientID
 //			//TODO:去掉离线功能
-////            subscriptions.deactivate(clientID);
+//            subscriptions.deactivate(clientID);
 //			subscriptions.removeForClient(clientID);
-			cleanSession(clientID);
-			LOG.info("Lost connection with client [{}]", clientID);
-		}
+//		}
+		cleanSession(clientID);
+		LOG.info("Lost connection with client [{}]", clientID);
 		//publish the Will message (if any) for the clientID
 		//TODO:去掉will功能
 //        if (m_willStore.containsKey(clientID)) {

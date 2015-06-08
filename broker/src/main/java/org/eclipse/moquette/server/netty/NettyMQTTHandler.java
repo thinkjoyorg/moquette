@@ -15,9 +15,9 @@
  */
 package org.eclipse.moquette.server.netty;
 
-import io.netty.channel.*;
 import io.netty.channel.ChannelHandler.Sharable;
-import io.netty.util.internal.chmv8.ConcurrentHashMapV8;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
 import org.eclipse.moquette.proto.Utils;
 import org.eclipse.moquette.proto.messages.AbstractMessage;
 import org.eclipse.moquette.proto.messages.PingRespMessage;
@@ -35,13 +35,13 @@ import static org.eclipse.moquette.proto.messages.AbstractMessage.*;
 public class NettyMQTTHandler extends ChannelInboundHandlerAdapter {
     
     private static final Logger LOG = LoggerFactory.getLogger(NettyMQTTHandler.class);
-	private final ChannelFutureListener remover = new ChannelFutureListener() {
-		@Override
-		public void operationComplete(ChannelFuture future) throws Exception {
-			remove(future.channel());
-		}
-	};
-	private final ConcurrentHashMapV8<String, NettyChannel> m_channelMapper = new ConcurrentHashMapV8<String, NettyChannel>();
+	//	private final ChannelFutureListener remover = new ChannelFutureListener() {
+//		@Override
+//		public void operationComplete(ChannelFuture future) throws Exception {
+//			remove(future.channel());
+//		}
+//	};
+//	private final ConcurrentHashMapV8<String, NettyChannel> m_channelMapper = new ConcurrentHashMapV8<String, NettyChannel>();
 	private IMessaging m_messaging;
 
 	@Override
@@ -59,21 +59,8 @@ public class NettyMQTTHandler extends ChannelInboundHandlerAdapter {
                 case PUBREL:
                 case DISCONNECT:
 	            case PUBACK:
-		            NettyChannel channel = m_channelMapper.computeIfAbsent(getKey(ctx.channel()), new ConcurrentHashMapV8.Fun<String, NettyChannel>() {
-			            @Override
-			            public NettyChannel apply(String s) {
-				            ctx.channel().closeFuture().addListener(remover);
-				            return new NettyChannel(ctx);
-			            }
-		            });
-//                    synchronized(m_channelMapper) {
-//                        if (!m_channelMapper.containsKey(getKey(ctx))) {
-//	                        m_channelMapper.put(getKey(ctx), new NettyChannel(ctx));
-//                        }
-//                        channel = m_channelMapper.get(getKey(ctx));
-//                    }
-                    m_messaging.handleProtocolMessage(channel, msg);
-                    break;
+		            m_messaging.handleProtocolMessage(new NettyChannel(ctx), msg);
+		            break;
                 case PINGREQ:
                     PingRespMessage pingResp = new PingRespMessage();
                     ctx.writeAndFlush(pingResp);
@@ -83,57 +70,48 @@ public class NettyMQTTHandler extends ChannelInboundHandlerAdapter {
             LOG.error("Bad error in processing the message", ex);
         }
     }
-
-	private final String getKey(Channel ch) {
-		return ch.toString().split(",")[0];
-	}
-
 	@Override
 	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-		LOG.warn("NettyMQTTHandler exceptionCaught!!");
-		NettyChannel channel = m_channelMapper.get(getKey(ctx.channel()));
-		if (null != channel) {
-			remove(ctx.channel());
-			release(channel);
-		}
-		if (ctx.channel().isActive()) {
-			ctx.close();
+		LOG.warn("NettyMQTTHandler exceptionCaught!");
+		try {
+			release(ctx);
+		} catch (Throwable th) {
+			LOG.warn("no resource to clean!", th);
+		} finally {
+			if (ctx.channel().isActive()) ctx.close(/*false*/);
 		}
 	}
 
 	@Override
 	public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-		super.channelInactive(ctx);
-		NettyChannel channel = m_channelMapper.get(getKey(ctx.channel()));
-		if (null == channel) {
-			ctx.close();
-			return;
+		try {
+			release(ctx);
+		} catch (Throwable th) {
+			LOG.warn("no resource to clean!", th);
+		} finally {
+			ctx.close(/*false*/);
 		}
-
-		remove(ctx.channel());
-		release(channel);
-
-	    ctx.close(/*false*/);
 
     }
 
-	private final void remove(Channel channel) {
-		if (m_channelMapper.remove(getKey(channel)) != null) {
-			channel.closeFuture().removeListener(remover);
+	private void release(ChannelHandlerContext ctx) {
+		String clientID = (String) NettyUtils.getAttribute(ctx, NettyChannel.ATTR_KEY_CLIENTID);
+		if (clientID != null) {
+			m_messaging.lostConnection(clientID);
 		}
 	}
 
-	private final void release(NettyChannel channel) {
-		try {
-			Object clientID = channel.getAttribute(NettyChannel.ATTR_KEY_CLIENTID);
-			if (null != clientID) {
-				LOG.debug("ClientID:[{}] is Inactive!!!", clientID.toString());
-				m_messaging.lostConnection(channel, (String) clientID);
-			}
-		} catch (Throwable th) {
-			LOG.warn("no resource to clean!", th);
-		}
-	}
+//	private final void release(NettyChannel channel) {
+//		try {
+//			Object clientID = channel.getAttribute(NettyUtils.getAttribute().ATTR_KEY_CLIENTID);
+//			if (null != clientID) {
+//				LOG.debug("ClientID:[{}] is Inactive!!!", clientID.toString());
+//				m_messaging.lostConnection(channel, (String) clientID);
+//			}
+//		} catch (Throwable th) {
+//			LOG.warn("no resource to clean!", th);
+//		}
+//	}
 
 	public void setMessaging(IMessaging messaging) {
 		m_messaging = messaging;

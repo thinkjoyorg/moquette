@@ -144,8 +144,8 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 	}
 
 	@Override
-	public void lostConnection(ServerChannel session, String clientID) {
-		disruptorPublish(new LostConnectionEvent(session, clientID));
+	public void lostConnection(String clientID) {
+		disruptorPublish(new LostConnectionEvent(clientID));
 	}
 
 	@Override
@@ -201,55 +201,54 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 
 	@Override
 	public void onEvent(ValueEvent t, long l, boolean bln) throws Exception {
-		try {
-			MessagingEvent evt = t.getEvent();
-			LOG.debug("onEvent processing messaging event from input ringbuffer {}", evt);
-			if (evt instanceof StopEvent) {
-				processStop();
-				return;
-			}
-			if (evt instanceof LostConnectionEvent) {
-				LOG.debug("LostConnection:[{}]", ((LostConnectionEvent) evt).clientID);
-				LostConnectionEvent lostEvt = (LostConnectionEvent) evt;
-				m_processor.processConnectionLost(lostEvt);
-				return;
-			}
+		MessagingEvent evt = t.getEvent();
+		/**
+		 * avoid memory leak
+		 */
+		t.setEvent(null);
 
-			if (evt instanceof ProtocolEvent) {
-				ServerChannel session = ((ProtocolEvent) evt).getSession();
-				AbstractMessage message = ((ProtocolEvent) evt).getMessage();
-				try {
-					if (benchmarkEnabled) {
-						++count;
-						long startTime = System.nanoTime();
-						annotationSupport.dispatch(session, message);
-						delay += System.nanoTime() - startTime;
-						if (count % 10 == 0) {
-							long p = m_ringBuffer.getCursor();
-							long backlog = Utils.count(p, l);
-							long l1 = delay / 10000000;
-							double r = 0.0;
-							if (l1 == 0) {
-								r = Double.POSITIVE_INFINITY;
-							} else {
-								r = count / l1;
-							}
-							System.out.format(formatString, count, r, backlog);
-						}
-					} else {
-						annotationSupport.dispatch(session, message);
-					}
-
-				} catch (Throwable th) {
-					LOG.error("Serious error processing the message {} for {}", message, session, th);
-				}
-			}
-		} finally {
-			/**
-			 * avoid memory leak
-			 */
-			t.setEvent(null);
+		LOG.debug("onEvent processing messaging event from input ringbuffer {}", evt);
+		if (evt instanceof StopEvent) {
+			processStop();
+			return;
 		}
+		if (evt instanceof LostConnectionEvent) {
+			LOG.debug("LostConnection:[{}]", ((LostConnectionEvent) evt).clientID);
+			LostConnectionEvent lostEvt = (LostConnectionEvent) evt;
+			m_processor.processConnectionLost(lostEvt);
+			return;
+		}
+
+		if (evt instanceof ProtocolEvent) {
+			ServerChannel session = ((ProtocolEvent) evt).getSession();
+			AbstractMessage message = ((ProtocolEvent) evt).getMessage();
+			try {
+				if (benchmarkEnabled) {
+					++count;
+					long startTime = System.nanoTime();
+					annotationSupport.dispatch(session, message);
+					delay += System.nanoTime() - startTime;
+					if (count % 10 == 0) {
+						long p = m_ringBuffer.getCursor();
+						long backlog = Utils.count(p, l);
+						long l1 = delay / 1000000;
+						double r = 0.0;
+						if (l1 == 0) {
+							r = Double.POSITIVE_INFINITY;
+						} else {
+							r = count / l1;
+						}
+						System.out.format(formatString, count, r, backlog);
+					}
+				} else {
+					annotationSupport.dispatch(session, message);
+				}
+
+			} catch (Throwable th) {
+				LOG.error("Serious error processing the message {} for {}", message, th);
+			}
+		}
+
 
 	}
 

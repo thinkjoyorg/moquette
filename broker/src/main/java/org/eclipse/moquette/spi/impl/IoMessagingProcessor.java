@@ -20,16 +20,14 @@ public class IoMessagingProcessor implements WorkHandler<ValueEvent> {
 	public void onEvent(ValueEvent event) throws Exception {
 		//always ProtocolExEvent instance
 		ProtocolExEvent evt = (ProtocolExEvent) event.getEvent();
+		ServerChannel session = evt.getSession();
+		AbstractMessage message = evt.getMessage();
+		AnnotationSupport annotationSupport = evt.annotationSupport;
 		try {
-			ServerChannel session = evt.getSession();
-			AbstractMessage message = evt.getMessage();
-			AnnotationSupport annotationSupport = evt.annotationSupport;
-			try {
-				annotationSupport.dispatch(session, message);
-			} catch (Throwable th) {
-				LOG.error("IoMessagingProcessor Serious error processing the message {} for {}", message, session, th);
-			}
-
+			annotationSupport.dispatch(session, message);
+		} catch (Throwable th) {
+			LOG.error("IoMessagingProcessor Serious error processing the message {}", message);
+			LOG.error(th.getMessage(), th);
 		} finally {
 			event.setEvent(null);
 		}

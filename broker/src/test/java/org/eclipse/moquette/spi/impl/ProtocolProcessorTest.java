@@ -540,8 +540,8 @@ public class ProtocolProcessorTest {
         //send a connection lost event from an already disconnected client, but with same clientID (FAKE_CLIENT_ID)
         //Exercise
 		DummyChannel channel2 = new DummyChannel();
-		LostConnectionEvent lostConnectionEvent = new LostConnectionEvent(channel2, FAKE_CLIENT_ID);
-        m_processor.processConnectionLost(lostConnectionEvent);
+		LostConnectionEvent lostConnectionEvent = new LostConnectionEvent(FAKE_CLIENT_ID);
+		m_processor.processConnectionLost(lostConnectionEvent);
 
         //Verify no subscriptions were deactivated for the client on session1
         verify(subs, never()).deactivate(anyString());
