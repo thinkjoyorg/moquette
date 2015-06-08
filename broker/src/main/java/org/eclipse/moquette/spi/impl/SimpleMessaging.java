@@ -97,9 +97,11 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 		/*Disruptor<ValueEvent> m_disruptor = new Disruptor<ValueEvent>(ValueEvent.EVENT_FACTORY, 1024 * 32, m_executor,
 	            ProducerType.MULTI, new BusySpinWaitStrategy());*/
 		m_disruptor.handleEventsWith(this);
+		m_disruptor.handleExceptionsWith(new DisruptorExceptionHandler());
 		m_disruptor.start();
 		WorkHandler[] handlers = create();
 		io_disruptor.handleEventsWithWorkerPool(handlers);
+		io_disruptor.handleExceptionsWith(new DisruptorExceptionHandler());
 		io_disruptor.start();
 
 		// Get the ring buffer from the Disruptor to be used for publishing.

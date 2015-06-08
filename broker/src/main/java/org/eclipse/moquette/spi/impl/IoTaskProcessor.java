@@ -34,7 +34,6 @@ public class IoTaskProcessor implements WorkHandler<ValueEvent> {
 	private final void publishForConnectConflict(String clientID, IMClient client) {
 		LOG.info("publishForConnectConflict for client [{}]", clientID);
 		// 等待actor就绪
-		long start = System.currentTimeMillis();
 		try {
 			String from = ClientIds.getAccount(clientID);
 			String areaAccount = ClientIds.getAccountArea(clientID);
@@ -44,8 +43,6 @@ public class IoTaskProcessor implements WorkHandler<ValueEvent> {
 			LOG.error(e.getMessage(), e);
 			throw new MQTTException(e);
 		}
-		long end = System.currentTimeMillis();
-		LOG.debug("publishForConnectConflict takes [{}] ms", (end - start));
 	}
 
 	@Override

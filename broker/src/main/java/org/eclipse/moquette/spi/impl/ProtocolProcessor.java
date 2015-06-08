@@ -110,10 +110,12 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 		ioDisruptor = new Disruptor<>(ValueEvent.EVENT_FACTORY, Constants.SIZE_RINGBUFFER, ioExecutor);
 
 		mainDisruptor.handleEventsWith(this);
+		mainDisruptor.handleExceptionsWith(new DisruptorExceptionHandler());
 		mainDisruptor.start();
 //		ioDisruptor.handleEventsWith(new IoTaskProcessor());
 		WorkHandler[] handlers = create();
 		ioDisruptor.handleEventsWithWorkerPool(handlers);
+		ioDisruptor.handleExceptionsWith(new DisruptorExceptionHandler());
 		ioDisruptor.start();
 
 		// Get the ring buffer from the Disruptor to be used for publishing.
