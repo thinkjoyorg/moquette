@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory;
  *
  * @version 1.0
  */
-
+@Deprecated
 public class DisruptorExceptionHandler implements ExceptionHandler<ValueEvent> {
 	private static final Logger LOG = LoggerFactory.getLogger(DisruptorExceptionHandler.class);
 
