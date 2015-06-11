@@ -164,7 +164,7 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 	 * @return
 	 */
 	private final boolean hasIoLogic(AbstractMessage msg) {
-		if (msg.getMessageType() == AbstractMessage.CONNECT || msg.getMessageType() == AbstractMessage.SUBSCRIBE) {
+		if (msg.getMessageType() == AbstractMessage.CONNECT/** || msg.getMessageType() == AbstractMessage.SUBSCRIBE*/) {
 			return true;
 		} else {
 			return false;
@@ -213,9 +213,11 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 			return;
 		}
 		if (evt instanceof LostConnectionEvent) {
-			LOG.debug("LostConnection:[{}]", ((LostConnectionEvent) evt).clientID);
 			LostConnectionEvent lostEvt = (LostConnectionEvent) evt;
+			long start = System.nanoTime();
 			m_processor.processConnectionLost(lostEvt);
+			long deley = System.nanoTime() - start;
+			LOG.info("processed lost connection takes [{}] ms", deley / 1000000);
 			return;
 		}
 
@@ -223,11 +225,13 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 			ServerChannel session = ((ProtocolEvent) evt).getSession();
 			AbstractMessage message = ((ProtocolEvent) evt).getMessage();
 			try {
-				if (benchmarkEnabled) {
+				if (benchmarkEnabled && message.getMessageType() == AbstractMessage.PUBLISH) {
 					++count;
 					long startTime = System.nanoTime();
 					annotationSupport.dispatch(session, message);
-					delay += System.nanoTime() - startTime;
+					long l2 = System.nanoTime() - startTime;
+					delay += l2;
+					LOG.info("processed type [{}] msg takes [{}] ms", message.getMessageType(), l2 / 1000000);
 					if (count % 10 == 0) {
 						long p = m_ringBuffer.getCursor();
 						long backlog = Utils.count(p, l);
