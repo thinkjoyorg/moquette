@@ -16,7 +16,9 @@
 package org.eclipse.moquette.parser.netty;
 
 import java.io.UnsupportedEncodingException;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.CorruptedFrameException;
@@ -49,9 +51,12 @@ class SubscribeDecoder extends DemuxDecoder {
         //read  messageIDs
         message.setMessageID(in.readUnsignedShort());
 	    int readed = in.readerIndex() - start;
+
+	    Set<String> topics = new HashSet<>();
+
 	    while (readed < message.getRemainingLength()) {
-            decodeSubscription(in, message);
-            readed = in.readerIndex()- start;
+		    decodeSubscription(in, message, topics);
+		    readed = in.readerIndex()- start;
         }
         
         if (message.subscriptions().isEmpty()) {
@@ -64,13 +69,19 @@ class SubscribeDecoder extends DemuxDecoder {
     /**
      * Populate the message with couple of Qos, topic
      */
-    private void decodeSubscription(ByteBuf in, SubscribeMessage message) throws UnsupportedEncodingException {
-        String topic = Utils.decodeString(in);
-        byte qosByte = in.readByte();
+    private void decodeSubscription(ByteBuf in, SubscribeMessage message, Set<String> topics) throws UnsupportedEncodingException {
+	    String topic = Utils.decodeString(in);
+	    byte qosByte = in.readByte();
         if ((qosByte & 0xFC) > 0) { //the first 6 bits is reserved => has to be 0
             throw new CorruptedFrameException("subscribe MUST have QoS byte with reserved buts to 0, found " + Integer.toHexString(qosByte));
         }
         byte qos = (byte)(qosByte & 0x03);
+	    // added by thinkjoy.cn for 去重复
+	    if (topics.contains(topic)) {
+		    return;
+	    } else {
+		    topics.add(topic);
+	    }
         //TODO check qos id 000000xx
         message.addSubscription(new SubscribeMessage.Couple(qos, topic));
     }
