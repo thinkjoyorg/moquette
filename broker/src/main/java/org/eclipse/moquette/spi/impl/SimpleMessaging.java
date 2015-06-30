@@ -21,12 +21,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import com.lmax.disruptor.BlockingWaitStrategy;
 import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.WorkHandler;
 import com.lmax.disruptor.dsl.Disruptor;
-import com.lmax.disruptor.dsl.ProducerType;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import org.eclipse.moquette.commons.Constants;
 import org.eclipse.moquette.proto.messages.AbstractMessage;
@@ -71,12 +69,32 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 	long delay = 0L;
 	long count = 0L;
 	private SubscriptionsStore subscriptions;
-	private RingBuffer<ValueEvent> m_ringBuffer, io_ringBuffer;
+
+	private boolean benchmarkEnabled = false;
 	private IMessagesStore m_storageService;
 	private ISessionsStore m_sessionsStore;
-	private ExecutorService m_executor, io_executor;
-	private Disruptor<ValueEvent> m_disruptor, io_disruptor;
-	private boolean benchmarkEnabled = false;
+	/**
+	 * 将事件分离，用合适的模型处理合适的事件，是提高整体吞吐量的关键。
+	 */
+
+	private Disruptor<ValueEvent> m_disruptor,// publish，subscribe,unsubscribe 事件分发器,单线程模型
+			io_disruptor;// connect 事件分发器， 多线程模型
+	/**
+	 * lostConn_disruptor; //lost connection 事件分发器，单线程模型。涉及到资源竞争，这里最好使用单线程处理
+	 */
+
+	private RingBuffer<ValueEvent> m_ringBuffer,
+			io_ringBuffer;
+	/**
+	 * lostConn_ringBuffer;
+	 */
+
+	private ExecutorService m_executor,
+			io_executor;
+
+	/**
+	 * lostConn_executor;
+	 */
 
 	private SimpleMessaging() {
 	}
@@ -90,27 +108,42 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 
 	public void init(Properties configProps) {
 		subscriptions = new SubscriptionsStore();
-		m_executor = Executors.newSingleThreadExecutor(new DefaultThreadFactory("MessagingDispatcher"));
-		io_executor = Executors.newFixedThreadPool(Constants.wThreads + 1, new DefaultThreadFactory("IoMessagingDispatcher"));
-		m_disruptor = new Disruptor<>(ValueEvent.EVENT_FACTORY, Constants.SIZE_RINGBUFFER, m_executor, ProducerType.SINGLE, new BlockingWaitStrategy());
-		io_disruptor = new Disruptor<>(ValueEvent.EVENT_FACTORY, Constants.SIZE_RINGBUFFER, io_executor, ProducerType.SINGLE, new BlockingWaitStrategy());
-		/*Disruptor<ValueEvent> m_disruptor = new Disruptor<ValueEvent>(ValueEvent.EVENT_FACTORY, 1024 * 32, m_executor,
-	            ProducerType.MULTI, new BusySpinWaitStrategy());*/
+
+		initDisruptor();
+		startDisruptor();
+		initRingBuffer();
+
+		annotationSupport.processAnnotations(m_processor);
+
+		processInit(configProps);
+	}
+
+	private void initRingBuffer() {
+		m_ringBuffer = m_disruptor.getRingBuffer();
+		io_ringBuffer = io_disruptor.getRingBuffer();
+		//lostConn_ringBuffer = lostConn_disruptor.getRingBuffer();
+	}
+
+	private void startDisruptor() {
 		m_disruptor.handleEventsWith(this);
 		m_disruptor.start();
 
-		WorkHandler[] handlers = create();
-
-		io_disruptor.handleEventsWithWorkerPool(handlers);
+		io_disruptor.handleEventsWithWorkerPool(create());
 		io_disruptor.start();
 
-		// Get the ring buffer from the Disruptor to be used for publishing.
-		m_ringBuffer = m_disruptor.getRingBuffer();
-		io_ringBuffer = io_disruptor.getRingBuffer();
+		//lostConn_disruptor.handleEventsWith(new LostConnProcessor());
+		//lostConn_disruptor.start();
+	}
 
-		annotationSupport.processAnnotations(m_processor);
-		processInit(configProps);
-//        disruptorPublish(new InitEvent(configProps));
+	private void initDisruptor() {
+		m_executor = Executors.newSingleThreadExecutor(new DefaultThreadFactory("MessagingDispatcher"));
+//		lostConn_executor = Executors.newSingleThreadExecutor(new DefaultThreadFactory("LostConnMessagingDispatcher"));
+		io_executor = Executors.newFixedThreadPool(Constants.wThreads + 1, new DefaultThreadFactory("IoMessagingDispatcher"));
+
+		m_disruptor = new Disruptor<>(ValueEvent.EVENT_FACTORY, Constants.SIZE_RINGBUFFER, m_executor);
+		io_disruptor = new Disruptor<>(ValueEvent.EVENT_FACTORY, Constants.SIZE_RINGBUFFER, io_executor);
+//		lostConn_disruptor = new Disruptor<>(ValueEvent.EVENT_FACTORY, Constants.SIZE_RINGBUFFER, lostConn_executor);
+
 	}
 
 	private final WorkHandler[] create() {
@@ -132,6 +165,16 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 		m_ringBuffer.publish(sequence);
 	}
 
+//	private void publishToLostConnDisruptor(MessagingEvent msgEvent) {
+//		LOG.debug("publishToLostConnDisruptor publishing event {}", msgEvent);
+//		long sequence = lostConn_ringBuffer.next();
+//		ValueEvent event = lostConn_ringBuffer.get(sequence);
+//
+//		event.setEvent(msgEvent);
+//
+//		lostConn_ringBuffer.publish(sequence);
+//	}
+
 	private void publishToIoDisruptor(MessagingEvent msgEvent) {
 		LOG.debug("publishToIoDisruptor publishing event {}", msgEvent);
 		long sequence = io_ringBuffer.next();
@@ -145,6 +188,7 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 
 	@Override
 	public void lostConnection(String clientID) {
+//		publishToLostConnDisruptor(new LostConnExEvent(clientID,m_processor));
 		disruptorPublish(new LostConnectionEvent(clientID));
 	}
 

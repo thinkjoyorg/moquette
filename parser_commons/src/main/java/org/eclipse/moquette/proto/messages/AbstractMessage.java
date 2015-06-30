@@ -36,14 +36,6 @@ public abstract class AbstractMessage {
     public static final byte PINGREQ = 12; //PING Request
     public static final byte PINGRESP = 13; //PING Response
     public static final byte DISCONNECT = 14; //Client is Disconnecting
-
-    public static enum QOSType {
-        MOST_ONE, LEAST_ONE, EXACTLY_ONCE, RESERVED;
-        
-        public static String formatQoS(QOSType qos) {
-            return String.format("%d - %s", qos.ordinal(), qos.name());
-        }
-    }
     //type
     protected boolean m_dupFlag;
     protected QOSType m_qos;
@@ -89,11 +81,19 @@ public abstract class AbstractMessage {
     public int getRemainingLength() {
         return m_remainingLength;
     }
-    
+
     /**
      * TOBE used only internally
      */
     public void setRemainingLength(int remainingLength) {
         this.m_remainingLength = remainingLength;
     }
+
+	public static enum QOSType {
+		MOST_ONE, LEAST_ONE, EXACTLY_ONCE, RESERVED, FAILURE;
+
+		public static String formatQoS(QOSType qos) {
+			return String.format("%d - %s", qos.ordinal(), qos.name());
+		}
+	}
 }

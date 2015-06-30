@@ -20,9 +20,7 @@ import java.io.IOException;
 import java.util.Properties;
 
 import cn.thinkjoy.cloudstack.cache.RedisRepository;
-import cn.thinkjoy.cloudstack.cache.RedisRepositoryFactory;
 import cn.thinkjoy.im.common.ClientIds;
-import cn.thinkjoy.im.common.IMConfig;
 import cn.thinkjoy.im.common.PlatformType;
 import org.eclipse.paho.client.mqttv3.*;
 import org.eclipse.paho.client.mqttv3.persist.MqttDefaultFilePersistence;
@@ -63,7 +61,7 @@ public class ServerIntegrationPahoTest {
 	    File dbFile = new File(org.eclipse.moquette.commons.Constants.DEFAULT_MOQUETTE_STORE_MAP_DB_FILENAME);
 	    assertFalse(String.format("The DB storagefile %s already exists", org.eclipse.moquette.commons.Constants.DEFAULT_MOQUETTE_STORE_MAP_DB_FILENAME), dbFile.exists());
 
-	    jedis = RedisRepositoryFactory.getRepository(IMConfig.CACHE_TOPIC_ROUTING_TABLE.get());
+//	    jedis = RedisRepositoryFactory.getRepository(IMConfig.CACHE_TOPIC_ROUTING_TABLE.get());
 	    startServer();
 
 	    String clientID = ClientIds.generateClientId("zl", "gbdai", PlatformType.Android);
@@ -140,8 +138,10 @@ public class ServerIntegrationPahoTest {
 		options.setUserName("00000000");
 		options.setPassword("111111".toCharArray());
 
+
 		m_client.connect(options);
 		m_client.subscribe("/topic");
+//		m_client.publish();
 //		m_client.subscribe(null, 0);
 
         MqttMessage message = new MqttMessage("Hello world!!".getBytes());

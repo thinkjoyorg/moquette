@@ -63,9 +63,15 @@ public class Constants {
 	public static final int bTheads = Runtime.getRuntime().availableProcessors();
 	//netty worker thread pool count
 	public static final int wThreads = Runtime.getRuntime().availableProcessors() * 2;
-	//disruptor thread pool count
-	public static final int nThreads = 1;
+	//other thread pool count
+	public static final int nThreads = 2 * wThreads;
 
 	public static int SIZE_RINGBUFFER = 1024 * 256;
+
+	public static int TYPE_PROCESSOR_MAIN = 1;
+	public static int TYPE_PROCESSOR_IO = 2;
+	public static int TYPE_PROCESSOR_PUBMSG = 3;
+	public static int TYPE_PROCESSOR_LOSTCONN = 4;
+	public static int TYPE_PROCESSOR_MESSAGING = 5;
 
 }

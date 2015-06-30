@@ -65,11 +65,11 @@ import static org.eclipse.moquette.parser.netty.Utils.VERSION_3_1_1;
  * io事件使用workerpool模型处理
  * 非io事件使用单线程worker模型处理
  */
-class ProtocolProcessor implements EventHandler<ValueEvent> {
+public class ProtocolProcessor implements EventHandler<ValueEvent> {
 
 	private static final Logger LOG = LoggerFactory.getLogger(ProtocolProcessor.class);
 
-	private ConcurrentHashMapV8<String, ConnectionDescriptor> m_clientIDs = new ConcurrentHashMapV8<>();
+	public ConcurrentHashMapV8<String, ConnectionDescriptor> m_clientIDs = new ConcurrentHashMapV8<>();
 	private SubscriptionsStore subscriptions;
 	private IMessagesStore m_messagesStore;
 	private ISessionsStore m_sessionsStore;
@@ -77,9 +77,17 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 	private Lock lock = new ReentrantLock();
 	//maps clientID to Will testament, if specified on CONNECT
 	private Map<String, WillMessage> m_willStore = new HashMap<>();
-	private ExecutorService mainExecutor, ioExecutor;
-	private RingBuffer<ValueEvent> mainRingBuffer, ioRingBuffer;
-	private Disruptor<ValueEvent> mainDisruptor, ioDisruptor;
+	private ExecutorService mainExecutor,
+			ioExecutor;
+	//pubMsgExecutor;
+
+	private RingBuffer<ValueEvent> mainRingBuffer,
+			ioRingBuffer;
+	//pubMsgRingBuffer;
+
+	private Disruptor<ValueEvent> mainDisruptor,
+			ioDisruptor;
+	//pubMsgDisruptor;
 
 	ProtocolProcessor() {
 	}
@@ -103,23 +111,50 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 		m_sessionsStore = sessionsStore;
 
 		//init the output ringbuffer
-		mainExecutor = Executors.newSingleThreadExecutor(new DefaultThreadFactory("ProtocolProcessor"));
-		ioExecutor = Executors.newFixedThreadPool(Constants.wThreads + 1, new DefaultThreadFactory("IoTaskProcessor"));
+		initExecutor();
 
-		mainDisruptor = new Disruptor<>(ValueEvent.EVENT_FACTORY, Constants.SIZE_RINGBUFFER, mainExecutor);
-		ioDisruptor = new Disruptor<>(ValueEvent.EVENT_FACTORY, Constants.SIZE_RINGBUFFER, ioExecutor);
+		initDisrutor();
 
-		mainDisruptor.handleEventsWith(this);
-		mainDisruptor.start();
-		WorkHandler[] handlers = create();
-
-		ioDisruptor.handleEventsWithWorkerPool(handlers);
-		ioDisruptor.start();
+		startDisruptor();
 
 		// Get the ring buffer from the Disruptor to be used for publishing.
+		initRingBuffer();
+
+	}
+
+	private void startDisruptor() {
+		mainDisruptor.handleEventsWith(this);
+		mainDisruptor.start();
+
+		ioDisruptor.handleEventsWithWorkerPool(create(Constants.TYPE_PROCESSOR_IO));
+		ioDisruptor.start();
+
+//		pubMsgDisruptor.handleEventsWithWorkerPool(create(Constants.TYPE_PROCESSOR_PUBMSG));
+//		pubMsgDisruptor.start();
+	}
+
+	private void initRingBuffer() {
 		mainRingBuffer = mainDisruptor.getRingBuffer();
 		ioRingBuffer = ioDisruptor.getRingBuffer();
+//		pubMsgRingBuffer = pubMsgDisruptor.getRingBuffer();
+	}
 
+	private void initDisrutor() {
+		mainDisruptor = new Disruptor<>(ValueEvent.EVENT_FACTORY, Constants.SIZE_RINGBUFFER, mainExecutor);
+		ioDisruptor = new Disruptor<>(ValueEvent.EVENT_FACTORY, Constants.SIZE_RINGBUFFER, ioExecutor);
+//		pubMsgDisruptor = new Disruptor<>(ValueEvent.EVENT_FACTORY, Constants.SIZE_RINGBUFFER, pubMsgExecutor);
+	}
+
+	private void initExecutor() {
+		mainExecutor = Executors.newSingleThreadExecutor(new DefaultThreadFactory("ProtocolProcessor"));
+		ioExecutor = Executors.newFixedThreadPool(Constants.wThreads + 1, new DefaultThreadFactory("IoTaskProcessor"));
+		/**
+		 *
+		 * 由于在匹配订阅者(SubscriptionsStore.matchs(String topic))的过程中存在瓶颈
+		 * 所以将发送消息，改为多线程模型。
+		 *
+		 */
+		//pubMsgExecutor = Executors.newFixedThreadPool(Constants.nThreads + 1, new DefaultThreadFactory("PubMsgProcessor"));
 	}
 
 	void destory() {
@@ -140,11 +175,14 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 
 	}
 
-	private final WorkHandler[] create() {
+	private final WorkHandler[] create(int processorType) {
 		int size = Constants.wThreads + 1;
 		WorkHandler[] handlers = new WorkHandler[size];
 		for (int i = 0; i < handlers.length; i++) {
-			handlers[i] = new IoTaskProcessor();
+			// always TYPE_PROCESSOR_IO
+			if (processorType == Constants.TYPE_PROCESSOR_IO) {
+				handlers[i] = new IoTaskProcessor();
+			}
 		}
 		return handlers;
 	}
@@ -231,7 +269,7 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 //        subscriptions.activate(msg.getClientID());
 
 		//handle clean session flag
-		//TODO:目前没必要进行清理，以为每次的clientID都不相同
+		//TODO:目前没必要进行清理，因为每次的clientID都不相同
 //		if (msg.isCleanSession()) {
 //			//remove all prev subscriptions
 //			//cleanup topic subscriptions
@@ -329,6 +367,10 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 		final ByteBuffer message = msg.getPayload();
 		boolean retain = msg.isRetainFlag();
 		processPublish(clientID, topic, qos, message, retain, msg.getMessageID());
+//		PublishExtraEvent publishExtraEvent = new PublishExtraEvent(topic, qos, message, retain,
+//				clientID, msg.getMessageID(),
+//				subscriptions, this);
+//		publishToPubMsgDisruptor(publishExtraEvent);
 	}
 
 	private void processPublish(String clientID, String topic, QOSType qos, ByteBuffer message, boolean retain, Integer messageID) {
@@ -572,25 +614,15 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 		boolean cleanSession = (Boolean) session.getAttribute(NettyChannel.ATTR_KEY_CLEANSESSION);
 		Set<Subscription> subscription = m_sessionsStore.getSubscriptionById(clientID);
 		ExtraIoEvent extraIoEvent = new ExtraIoEvent(IoEvent.IoEventType.DISCONNECT, clientID, subscription);
-//		IoEvent ioEvent = new IoEvent(IoEvent.IoEventType.DISCONNECT, clientID);
 
 		publishToIoDisruptor(extraIoEvent);
 
 		if (cleanSession) {
-			//cleanup topic subscriptions
-//			cleanSession(clientID);
+
 			cleanSessionWithoutLock(clientID);
 		}
-//        m_notifier.disconnect(evt.getSession());
 		m_clientIDs.remove(clientID);
 		session.close(true);
-		//de-activate the subscriptions for this ClientID
-		//TODO:去掉离线功能
-//        subscriptions.deactivate(clientID);
-//		subscriptions.removeForClient(clientID);
-		//cleanup the will store
-		//TODO:去掉will功能
-//	    m_willStore.remove(clientID);
 
 		LOG.info("DISCONNECT client [{}] with clean session {}", clientID, cleanSession);
 
@@ -602,30 +634,14 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 		//如果丢失连接必须也要清理客户端信息。
 		Set<Subscription> subscription = m_sessionsStore.getSubscriptionById(clientID);
 		ExtraIoEvent extraIoEvent = new ExtraIoEvent(IoEvent.IoEventType.LOSTCONNECTION, clientID, subscription);
-
-//		IoEvent ioEvent = new IoEvent(IoEvent.IoEventType.DISCONNECT, clientID);
 		publishToIoDisruptor(extraIoEvent);
 
 		//If already removed a disconnect message was already processed for this clientID
-		m_clientIDs.remove(clientID);
-//		if () {
-//
-//			//de-activate the subscriptions for this ClientID
-//			//TODO:去掉离线功能
-//            subscriptions.deactivate(clientID);
-//			subscriptions.removeForClient(clientID);
-//		}
-//		cleanSession(clientID);
-		cleanSessionWithoutLock(clientID);
-		LOG.info("Lost connection with client [{}]", clientID);
-		//publish the Will message (if any) for the clientID
-		//TODO:去掉will功能
-//        if (m_willStore.containsKey(clientID)) {
-//            WillMessage will = m_willStore.get(clientID);
-//	        forwardPublishWill(will, clientID);
-//	        m_willStore.remove(clientID);
-//        }
+		if (m_clientIDs.remove(clientID) != null) {
+			cleanSessionWithoutLock(clientID);
+		}
 
+		LOG.info("Lost connection with client [{}]", clientID);
 
 	}
 
@@ -639,20 +655,9 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 		int messageID = msg.getMessageID();
 		String clientID = (String) session.getAttribute(NettyChannel.ATTR_KEY_CLIENTID);
 		LOG.info("UNSUBSCRIBE subscription on topics {} for clientID [{}]", topics, clientID);
-//		lock.lock();
-//		try {
-//			for (String topic : topics) {
-//				subscriptions.removeSubscription(topic, clientID);
-//
-//				TopicRouterRepository.clean(topic);
-//			}
-//		} finally {
-//			lock.unlock();
-//		}
-
 		for (String topic : topics) {
 			subscriptions.removeSubscription(topic, clientID);
-
+			m_sessionsStore.removeSubscription(topic, clientID);
 			TopicRouterRepository.clean(topic);
 		}
 		//ack the client
@@ -669,22 +674,6 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 		boolean cleanSession = (Boolean) session.getAttribute(NettyChannel.ATTR_KEY_CLEANSESSION);
 		LOG.debug("SUBSCRIBE client [{}] packetID {}", clientID, msg.getMessageID());
 
-//	    //排除系统topic
-//	    Iterable<SubscribeMessage.Couple> subs = Iterables.filter(msg.subscriptions(), new Predicate<SubscribeMessage.Couple>() {
-//		    @Override
-//		    public boolean apply(SubscribeMessage.Couple req) {
-//			    return !SYS_TOPIC.contains(req.getTopicFilter());
-//		    }
-//	    });
-
-		for (SubscribeMessage.Couple req : msg.subscriptions()) {
-			AbstractMessage.QOSType qos = AbstractMessage.QOSType.values()[req.getQos()];
-			Subscription newSubscription = new Subscription(clientID, req.getTopicFilter(), qos, cleanSession);
-			subscribeSingleTopic(newSubscription, req.getTopicFilter());
-
-			TopicRouterRepository.add(req.getTopicFilter());
-		}
-
 		//ack the client
 		SubAckMessage ackMessage = new SubAckMessage();
 		ackMessage.setMessageID(msg.getMessageID());
@@ -692,47 +681,36 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 		//reply with requested qos
 		for (SubscribeMessage.Couple req : msg.subscriptions()) {
 			AbstractMessage.QOSType qos = AbstractMessage.QOSType.values()[req.getQos()];
-			ackMessage.addType(qos);
+			Subscription newSubscription = new Subscription(clientID, req.getTopicFilter(), qos, cleanSession);
+			boolean valid = subscribeSingleTopic(newSubscription, req.getTopicFilter());
+
+			ackMessage.addType(valid ? qos : QOSType.FAILURE);
 		}
 
 		LOG.debug("SUBACK for packetID {}", msg.getMessageID());
 		session.write(ackMessage);
 	}
 
-	private void subscribeSingleTopic(Subscription newSubscription, final String topic) {
+	private boolean subscribeSingleTopic(Subscription newSubscription, final String topic) {
 		LOG.info("[{}] subscribed to topic [{}] with QoS {}",
 				newSubscription.getClientId(), topic,
 				AbstractMessage.QOSType.formatQoS(newSubscription.getRequestedQos()));
 		String clientID = newSubscription.getClientId();
-//		lock.lock();
-//		try {
-//			m_sessionsStore.addNewSubscription(newSubscription, clientID);
-//			subscriptions.add(newSubscription);
-//		} finally {
-//			lock.unlock();
-//		}
+		boolean validTopic = SubscriptionsStore.validate(newSubscription);
+		if (!validTopic) {
+			return false;
+		}
+
 		m_sessionsStore.addNewSubscription(newSubscription, clientID);
 		subscriptions.add(newSubscription);
 
-		//TODO:去掉retain功能
-		//scans retained messages to be published to the new subscription
-//		Collection<IMessagesStore.StoredMessage> messages = m_messagesStore.searchMatching(new IMatchingCondition() {
-//			public boolean match(String key) {
-//				return SubscriptionsStore.matchTopics(key, topic);
-//			}
-//		});
-//
-//		for (IMessagesStore.StoredMessage storedMsg : messages) {
-//			//fire the as retained the message
-//			LOG.debug("send publish message for topic {}", topic);
-//			//forwardPublishQoS0(newSubscription.getClientId(), storedMsg.getTopic(), storedMsg.getQos(), storedMsg.getPayload(), true);
-//			Integer packetID = storedMsg.getQos() == QOSType.MOST_ONE ? null :
-//					m_messagesStore.nextPacketID(newSubscription.getClientId());
-//			sendPublish(newSubscription.getClientId(), storedMsg.getTopic(), storedMsg.getQos(), storedMsg.getPayload(), true, packetID);
-//		}
+		TopicRouterRepository.add(topic);
+
+		return true;
+
 	}
 
-	private void publishToMainDisruptor(MessagingEvent msgEvent) {
+	public void publishToMainDisruptor(MessagingEvent msgEvent) {
 		LOG.debug("publishToMainDisruptor publishing event on output {}", msgEvent);
 		long sequence = mainRingBuffer.next();
 		ValueEvent event = mainRingBuffer.get(sequence);
@@ -751,6 +729,17 @@ class ProtocolProcessor implements EventHandler<ValueEvent> {
 
 		ioRingBuffer.publish(sequence);
 	}
+
+//	private void publishToPubMsgDisruptor(MessagingEvent msgEvent) {
+//		LOG.debug("publishToPubMsgDisruptor publishing event on output {}", msgEvent);
+//		long sequence = pubMsgRingBuffer.next();
+//		ValueEvent event = pubMsgRingBuffer.get(sequence);
+//
+//		event.setEvent(msgEvent);
+//
+//		pubMsgRingBuffer.publish(sequence);
+//	}
+
 
 	public void onEvent(ValueEvent t, long l, boolean bln) throws Exception {
 //		if (LOG.isDebugEnabled()) {

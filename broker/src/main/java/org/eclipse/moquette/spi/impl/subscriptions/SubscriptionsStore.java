@@ -16,8 +16,10 @@
 package org.eclipse.moquette.spi.impl.subscriptions;
 
 import java.text.ParseException;
-import java.util.*;
-import java.util.concurrent.LinkedBlockingDeque;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
 
 import org.eclipse.moquette.spi.ISessionsStore;
 import org.slf4j.Logger;
@@ -31,7 +33,7 @@ import org.slf4j.LoggerFactory;
 public class SubscriptionsStore {
 
 	private static final Logger LOG = LoggerFactory.getLogger(SubscriptionsStore.class);
-	private TreeNode subscriptions = new TreeNode(null);
+	private TreeNode subscriptions = new TreeNode();
 	private ISessionsStore m_sessionsStore;
 
 	/**
@@ -117,6 +119,19 @@ public class SubscriptionsStore {
 		return res;
 	}
 
+	/**
+	 * Check if the topic filter of the subscription is well formed
+	 */
+	public static boolean validate(Subscription newSubscription) {
+		try {
+			parseTopic(newSubscription.topicFilter);
+			return true;
+		} catch (ParseException pex) {
+			LOG.info("Bad matching topic filter <{}>", newSubscription.topicFilter);
+			return false;
+		}
+	}
+
     /**
      * Initialize the subscription tree with the list of subscriptions.
      */
@@ -139,38 +154,9 @@ public class SubscriptionsStore {
 //        }
     }
 
-    protected void addDirect(Subscription newSubscription) {
-        TreeNode current = findMatchingNode(newSubscription.topicFilter);
-        current.addSubscription(newSubscription);
-    }
-    
-    private TreeNode findMatchingNode(String topic) {
-        List<Token> tokens = new ArrayList<Token>();
-        try {
-            tokens = parseTopic(topic);
-        } catch (ParseException ex) {
-            //TODO handle the parse exception
-            LOG.error(null, ex);
-//            return;
-        }
-
-        TreeNode current = subscriptions;
-        for (Token token : tokens) {
-            TreeNode matchingChildren;
-
-            //check if a children with the same token already exists
-            if ((matchingChildren = current.childWithToken(token)) != null) {
-                current = matchingChildren;
-            } else {
-                //create a new node for the newly inserted token
-                matchingChildren = new TreeNode(current);
-                matchingChildren.setToken(token);
-                current.addChild(matchingChildren);
-                current = matchingChildren;
-            }
-        }
-        return current;
-    }
+	protected void addDirect(Subscription newSubscription) {
+		subscriptions.addSubscription(newSubscription);
+	}
 
 	public void add(Subscription newSubscription) {
 		addDirect(newSubscription);
@@ -181,33 +167,23 @@ public class SubscriptionsStore {
     }
 
     public void removeSubscription(String topic, String clientID) {
-        TreeNode matchNode = findMatchingNode(topic);
+	    Set<Subscription> all = subscriptions.findAllByClientID(clientID);
 
-        //search for the subscription to remove
-        Subscription toBeRemoved = null;
-        for (Subscription sub : matchNode.subscriptions()) {
-            if (sub.topicFilter.equals(topic) && sub.getClientId().equals(clientID)) {
-                toBeRemoved = sub;
-                break;
-            }
-        }
-
-        if (toBeRemoved != null) {
-            matchNode.subscriptions().remove(toBeRemoved);
-        }
+	    //search for the subscription to remove
+	    Iterator<Subscription> it = all.iterator();
+	    while (it.hasNext()) {
+		    Subscription sub = it.next();
+		    if (sub.match(topic)) {
+			    it.remove();
+		    }
+	    }
     }
 
 	/**
 	 * TODO implement testing
 	 */
 	public void clearAllSubscriptions() {
-		SubscriptionTreeCollector subsCollector = new SubscriptionTreeCollector();
-        bfsVisit(subscriptions, subsCollector);
 
-		List<Subscription> allSubscriptions = subsCollector.getResult();
-		for (Subscription subscription : allSubscriptions) {
-			removeSubscription(subscription.getTopicFilter(), subscription.getClientId());
-		}
 	}
 
 	/**
@@ -220,18 +196,20 @@ public class SubscriptionsStore {
     }
 
     public void deactivate(String clientID) {
-        subscriptions.deactivate(clientID);
-        //persist the update
-        Set<Subscription> subs = subscriptions.findAllByClientID(clientID);
-        m_sessionsStore.updateSubscriptions(clientID, subs);
+	    //TODO:暂不使用
+//        subscriptions.deactivate(clientID);
+//        //persist the update
+//        Set<Subscription> subs = subscriptions.findAllByClientID(clientID);
+//        m_sessionsStore.updateSubscriptions(clientID, subs);
     }
 
     public void activate(String clientID) {
-        LOG.debug("Activating subscriptions for clientID <{}>", clientID);
-        subscriptions.activate(clientID);
-        //persist the update
-        Set<Subscription> subs = subscriptions.findAllByClientID(clientID);
-        m_sessionsStore.updateSubscriptions(clientID, subs);
+	    //TODO:暂不使用
+//        LOG.debug("Activating subscriptions for clientID <{}>", clientID);
+//        subscriptions.activate(clientID);
+//        //persist the update
+//        Set<Subscription> subs = subscriptions.findAllByClientID(clientID);
+//        m_sessionsStore.updateSubscriptions(clientID, subs);
     }
 
     /**
@@ -240,19 +218,7 @@ public class SubscriptionsStore {
      * listeners subscriptions, and not topic publishing.
      */
     public List<Subscription> matches(String topic) {
-        List<Token> tokens;
-        try {
-            tokens = parseTopic(topic);
-        } catch (ParseException ex) {
-            //TODO handle the parse exception
-            LOG.error(null, ex);
-	        return Collections.emptyList();
-        }
-
-        Queue<Token> tokenQueue = new LinkedBlockingDeque<Token>(tokens);
-        List<Subscription> matchingSubs = new ArrayList<Subscription>();
-        subscriptions.matches(tokenQueue, matchingSubs);
-        return matchingSubs;
+	    return subscriptions.matches(topic);
     }
 
     public boolean contains(Subscription sub) {
@@ -264,20 +230,24 @@ public class SubscriptionsStore {
     }
 
 	public String dumpTree() {
-		DumpTreeVisitor visitor = new DumpTreeVisitor();
-		bfsVisit(subscriptions, visitor);
-        return visitor.getResult();
-    }
-    
+		//TODO:暂不使用
+//		DumpTreeVisitor visitor = new DumpTreeVisitor();
+//		bfsVisit(subscriptions, visitor);
+//        return visitor.getResult();
+		return "";
+	}
+
     private void bfsVisit(TreeNode node, IVisitor visitor) {
-        if (node == null) {
-            return;
-        }
-        visitor.visit(node);
-        for (TreeNode child : node.m_children) {
-            bfsVisit(child, visitor);
-        }
+	    //TODO:暂不使用
+//        if (node == null) {
+//            return;
+//        }
+//        visitor.visit(node);
+//        for (TreeNode child : node.m_children) {
+//            bfsVisit(child, visitor);
+//        }
     }
+
 
 	public static interface IVisitor<T> {
 		void visit(TreeNode node);

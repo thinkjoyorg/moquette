@@ -156,13 +156,17 @@ public class MapDBPersistentStore implements IMessagesStore, ISessionsStore {
     }
 
     @Override
-    public void removeMessageInSession(String clientID, int messageID) {
+    public void removeMessageInSession(String clientID, Integer messageID) {
         List<StoredPublishEvent> events = m_persistentMessageStore.get(clientID);
         if (events == null) {
             return;
         }
         StoredPublishEvent toRemoveEvt = null;
         for (StoredPublishEvent evt : events) {
+	        if (evt.getMessageID() == null && messageID == null) {
+		        //was a qos0 message (no ID)
+		        toRemoveEvt = evt;
+	        }
             if (evt.getMessageID() == messageID) {
                 toRemoveEvt = evt;
             }
@@ -244,8 +248,37 @@ public class MapDBPersistentStore implements IMessagesStore, ISessionsStore {
         m_db.commit();
     }
 
-    public void wipeSubscriptions(String clientID) {
-        m_persistentSubscriptions.remove(clientID);
+	/**
+	 * removed a specific subscription
+	 *
+	 * @param topic
+	 * @param clientID
+	 */
+	@Override
+	public void removeSubscription(String topic, String clientID) {
+		LOG.debug("removeSubscription topic filter : {} for clientID {}", topic, clientID);
+		if (!m_persistentSubscriptions.containsKey(clientID)) {
+			return;
+		}
+		Set<Subscription> clientSubscriptions = m_persistentSubscriptions.get(clientID);
+		//search for the subscription to remove
+		Subscription toBeRemoved = null;
+		for (Subscription sub : clientSubscriptions) {
+			if (sub.getTopicFilter().equals(topic)) {
+				toBeRemoved = sub;
+				break;
+			}
+		}
+
+		if (toBeRemoved != null) {
+			clientSubscriptions.remove(toBeRemoved);
+		}
+		m_persistentSubscriptions.putIfAbsent(clientID, clientSubscriptions);
+		m_db.commit();
+	}
+
+	public void wipeSubscriptions(String clientID) {
+		m_persistentSubscriptions.remove(clientID);
         m_db.commit();
     }
 

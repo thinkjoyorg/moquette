@@ -53,7 +53,7 @@ public interface IMessagesStore {
      */
     List<PublishEvent> listMessagesInSession(String clientID);
 
-	void removeMessageInSession(String clientID, int packetID);
+	void removeMessageInSession(String clientID, Integer packetID);
 
 	void dropMessagesInSession(String clientID);
 
