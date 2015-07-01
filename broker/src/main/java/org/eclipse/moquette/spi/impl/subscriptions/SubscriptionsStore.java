@@ -31,7 +31,8 @@ import org.slf4j.LoggerFactory;
 public class SubscriptionsStore {
 
 	private static final Logger LOG = LoggerFactory.getLogger(SubscriptionsStore.class);
-	private TreeNode subscriptions = new TreeNode();
+	private Subscriptions subscriptions = new Subscriptions();
+	//	private TreeNode subscriptions = new TreeNode();
 	private ISessionsStore m_sessionsStore;
 
 	/**

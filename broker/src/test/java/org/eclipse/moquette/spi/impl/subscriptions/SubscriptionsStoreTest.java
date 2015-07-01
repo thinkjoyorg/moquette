@@ -78,6 +78,24 @@ public class SubscriptionsStoreTest {
 		}
 	}
 
+	@Test
+	public void testRemove1() throws Exception {
+		long s = System.currentTimeMillis();
+		store.removeForClient("user0");
+		long e = System.currentTimeMillis() - s;
+		System.out.println("remove1 takes: " + e + "ms");
+
+	}
+
+	@Test
+	public void testRemove2() throws Exception {
+		long s = System.currentTimeMillis();
+		store.removeSubscription("/group/g1", "user0");
+		long e = System.currentTimeMillis() - s;
+		System.out.println("remove2 takes: " + e + "ms");
+
+	}
+
 //    @Test(expected = ParseException.class)
 //    public void testSplitTopicTwinsSlashAvoided() throws ParseException {
 //        store.parseTopic("/finance//stock/ibm");

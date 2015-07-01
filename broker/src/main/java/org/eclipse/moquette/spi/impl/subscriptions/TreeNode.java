@@ -20,17 +20,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.common.collect.Table;
+import com.google.common.collect.TreeBasedTable;
 
+@Deprecated
 class TreeNode {
 
     Token m_token;
 	// rowKey : clientId, columnKey : topic, value : subscription
 	// 业务特性(qos为0，cleanSession为true): clientID和topic可以确定唯一的Subscription
-	Table<String, String, Subscription> subs = HashBasedTable.create();
+	Table<String, String, Subscription> subs = TreeBasedTable.create();
 
     Token getToken() {
         return m_token;
