@@ -431,7 +431,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
 	/**
 	 * Flood the subscribers with the message to notify. MessageID is optional and should only used for QoS 1 and 2
 	 */
-	private void forward2Subscribers(String topic, AbstractMessage.QOSType qos, ByteBuffer origMessage,
+	void forward2Subscribers(String topic, AbstractMessage.QOSType pubQos, ByteBuffer origMessage,
 	                                 boolean retain, Integer messageID) {
 		LOG.debug("forward2Subscribers republishing to existing subscribers that matches the topic {}", topic);
 //		if (LOG.isDebugEnabled()) {
@@ -444,6 +444,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
 //			subscription.getClientId()
 //		}
 		for (final Subscription sub : matched) {
+			AbstractMessage.QOSType qos = pubQos;
 			if (qos.ordinal() > sub.getRequestedQos().ordinal()) {
 				qos = sub.getRequestedQos();
 			}

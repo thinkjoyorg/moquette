@@ -15,14 +15,22 @@
  */
 package org.eclipse.moquette.spi.impl.subscriptions;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
+import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
+import com.google.common.collect.Table;
 
 class TreeNode {
 
     Token m_token;
-	List<Subscription> m_subscriptions = new ArrayList<>();
+	// rowKey : clientId, columnKey : topic, value : subscription
+	// 业务特性(qos为0，cleanSession为true): clientID和topic可以确定唯一的Subscription
+	Table<String, String, Subscription> subs = HashBasedTable.create();
 
     Token getToken() {
         return m_token;
@@ -33,43 +41,42 @@ class TreeNode {
     }
 
     void addSubscription(Subscription s) {
-        //avoid double registering for same clientID, topic and QoS
-        if (m_subscriptions.contains(s)) {
-            return;
-        }
-
-        m_subscriptions.add(s);
+	    subs.put(s.getClientId(), s.getTopicFilter(), s);
     }
 
-    List<Subscription> subscriptions() {
-        return m_subscriptions;
-    }
+	Set<Subscription> subscriptions() {
+		Collection<Subscription> values = subs.values();
+		Set<Subscription> result = Sets.newLinkedHashSet();
+		result.addAll(values);
+		return result;
+	}
 
 	List<Subscription> matches(String topic) {
 		List<Subscription> result = Lists.newArrayList();
-		for (Subscription subscription : m_subscriptions) {
-			if (subscription.match(topic)) {
-				result.add(subscription);
-			}
+		Map<String, Subscription> subscriptions = subs.column(topic);
+		for (Map.Entry<String, Subscription> entry : subscriptions.entrySet()) {
+			result.add(entry.getValue());
 		}
 		return result;
+	}
+
+	void removeMatchedSubscription(String topic, String clientID) {
+		subs.remove(clientID, topic);
 	}
 
     /**
      * Return the number of registered subscriptions
      */
     int size() {
-	    return m_subscriptions.size();
+	    return subs.size();
     }
 
-	//TODO:优化点
 	void removeClientSubscriptions(String clientID) {
-		Iterator<Subscription> it = m_subscriptions.iterator();
-		while (it.hasNext()) {
-			Subscription sub = it.next();
-			if (sub.getClientId().equals(clientID)) {
-				it.remove();
-			}
+		Map<String, Subscription> subscriptions = subs.row(clientID);
+		for (Map.Entry<String, Subscription> entry : subscriptions.entrySet()) {
+			Subscription subscription = entry.getValue();
+			String column = subscription.getTopicFilter();
+			subs.remove(clientID, column);
 		}
 	}
 
@@ -78,22 +85,11 @@ class TreeNode {
      * @return the set of subscriptions for the given client.
      * */
     Set<Subscription> findAllByClientID(String clientID) {
-        Set<Subscription> subs = new HashSet<Subscription>();
-	    Iterator<Subscription> it = m_subscriptions.iterator();
-	    while (it.hasNext()) {
-		    Subscription sub = it.next();
-		    if (sub.getClientId().equals(clientID)) {
-			    subs.add(sub);
-		    }
+	    Map<String, Subscription> subscriptions = subs.row(clientID);
+	    Set<Subscription> result = Sets.newLinkedHashSet();
+	    for (Map.Entry<String, Subscription> entry : subscriptions.entrySet()) {
+		    result.add(entry.getValue());
 	    }
-        return subs;
-    }
-
-	private class ClientIDComparator implements Comparator<Subscription> {
-
-		public int compare(Subscription o1, Subscription o2) {
-			return o1.getClientId().compareTo(o2.getClientId());
-		}
-
+	    return result;
     }
 }

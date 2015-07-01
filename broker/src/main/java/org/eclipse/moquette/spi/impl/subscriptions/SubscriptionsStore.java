@@ -17,9 +17,7 @@ package org.eclipse.moquette.spi.impl.subscriptions;
 
 import java.text.ParseException;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
 
 import org.eclipse.moquette.spi.ISessionsStore;
 import org.slf4j.Logger;
@@ -167,16 +165,7 @@ public class SubscriptionsStore {
     }
 
     public void removeSubscription(String topic, String clientID) {
-	    Set<Subscription> all = subscriptions.findAllByClientID(clientID);
-
-	    //search for the subscription to remove
-	    Iterator<Subscription> it = all.iterator();
-	    while (it.hasNext()) {
-		    Subscription sub = it.next();
-		    if (sub.match(topic)) {
-			    it.remove();
-		    }
-	    }
+	    subscriptions.removeMatchedSubscription(topic, clientID);
     }
 
 	/**
@@ -237,7 +226,7 @@ public class SubscriptionsStore {
 		return "";
 	}
 
-    private void bfsVisit(TreeNode node, IVisitor visitor) {
+	// private void bfsVisit(TreeNode node, IVisitor visitor) {
 	    //TODO:暂不使用
 //        if (node == null) {
 //            return;
@@ -246,43 +235,43 @@ public class SubscriptionsStore {
 //        for (TreeNode child : node.m_children) {
 //            bfsVisit(child, visitor);
 //        }
-    }
+	//}
 
 
-	public static interface IVisitor<T> {
-		void visit(TreeNode node);
-
-		T getResult();
-	}
-
-	private class DumpTreeVisitor implements IVisitor<String> {
-
-		String s = "";
-
-		public void visit(TreeNode node) {
-			String subScriptionsStr = "";
-			for (Subscription sub : node.m_subscriptions) {
-				subScriptionsStr += sub.toString();
-			}
-			s += node.getToken() == null ? "" : node.getToken().toString();
-			s += subScriptionsStr + "\n";
-		}
-
-		public String getResult() {
-			return s;
-		}
-	}
-
-	private class SubscriptionTreeCollector implements IVisitor<List<Subscription>> {
-
-		private List<Subscription> m_allSubscriptions = new ArrayList<Subscription>();
-
-		public void visit(TreeNode node) {
-			m_allSubscriptions.addAll(node.subscriptions());
-		}
-
-		public List<Subscription> getResult() {
-			return m_allSubscriptions;
-		}
-	}
+//	public static interface IVisitor<T> {
+//		void visit(TreeNode node);
+//
+//		T getResult();
+//	}
+//
+//	private class DumpTreeVisitor implements IVisitor<String> {
+//
+//		String s = "";
+//
+//		public void visit(TreeNode node) {
+//			String subScriptionsStr = "";
+//			for (Subscription sub : node.m_subscriptions) {
+//				subScriptionsStr += sub.toString();
+//			}
+//			s += node.getToken() == null ? "" : node.getToken().toString();
+//			s += subScriptionsStr + "\n";
+//		}
+//
+//		public String getResult() {
+//			return s;
+//		}
+//	}
+//
+//	private class SubscriptionTreeCollector implements IVisitor<List<Subscription>> {
+//
+//		private List<Subscription> m_allSubscriptions = new ArrayList<Subscription>();
+//
+//		public void visit(TreeNode node) {
+//			m_allSubscriptions.addAll(node.subscriptions());
+//		}
+//
+//		public List<Subscription> getResult() {
+//			return m_allSubscriptions;
+//		}
+//	}
 }

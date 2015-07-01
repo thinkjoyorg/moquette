@@ -56,7 +56,27 @@ public class SubscriptionsStoreTest {
 	public void setUp() throws IOException {
         store = new SubscriptionsStore();
         store.init(new MemoryStorageService());
-    }
+		long s = System.currentTimeMillis();
+		for (int i = 0; i < 100000; i++) {
+			store.add(new Subscription("user" + i, "/user/user" + i, AbstractMessage.QOSType.MOST_ONE, true));
+			if (i % 1000 == 0) {
+				store.add(new Subscription("user" + i, "/group/g1", AbstractMessage.QOSType.MOST_ONE, true));
+			}
+		}
+		long e = System.currentTimeMillis() - s;
+		System.out.println("add takes : " + e + "ms");
+	}
+
+	@Test
+	public void testMatch() throws Exception {
+		long s = System.currentTimeMillis();
+		List<Subscription> matches = store.matches("/group/g1");
+		long e = System.currentTimeMillis() - s;
+		System.out.println("match takes: " + e + "ms");
+		for (Subscription match : matches) {
+			System.out.println(match);
+		}
+	}
 
 //    @Test(expected = ParseException.class)
 //    public void testSplitTopicTwinsSlashAvoided() throws ParseException {
