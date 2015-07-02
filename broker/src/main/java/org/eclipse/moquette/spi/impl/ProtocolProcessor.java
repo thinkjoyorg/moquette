@@ -206,7 +206,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
 			session.close(false);
 			return;
 		}
-		//handle user authentication
+//		handle user authentication
 		if (!ClientIds.isValid(msg.getClientID())) {
 			authFail(session);
 		}
