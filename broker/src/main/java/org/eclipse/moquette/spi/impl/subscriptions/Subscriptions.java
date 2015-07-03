@@ -95,7 +95,11 @@ public class Subscriptions {
 
 		boolean removed = subscriptions.remove(s);
 		if (removed) {
-			topicSubCache.put(s.getTopicFilter(), subscriptions);
+			if (subscriptions.size() > 0) {
+				topicSubCache.put(s.getTopicFilter(), subscriptions);
+			} else {
+				topicSubCache.remove(s.getTopicFilter());
+			}
 		}
 
 	}
@@ -105,7 +109,11 @@ public class Subscriptions {
 
 		boolean removed = subscriptions.remove(s);
 		if (removed) {
-			clientIDSubCache.put(s.getClientId(), subscriptions);
+			if (subscriptions.size() > 0) {
+				clientIDSubCache.put(s.getClientId(), subscriptions);
+			} else {
+				clientIDSubCache.remove(s.getClientId());
+			}
 		}
 
 	}
@@ -118,13 +126,15 @@ public class Subscriptions {
 	}
 
 	void removeClientSubscriptions(String clientID) {
-		Set<Subscription> subscriptions = clientIDSubCache.get(clientID);
+		Set<Subscription> temp = clientIDSubCache.get(clientID);
+
+		Set<Subscription> subscriptions = Sets.newHashSet(temp);
 
 		if (subscriptions != null) {
 			for (Subscription subscription : subscriptions) {
 				subs.remove(subscription);
-				buildTopicSubCache(subscription);
-				buildClientIDSubCache(subscription);
+				removeSubFromClientIDCache(subscription);
+				removeSubFromTopicCache(subscription);
 			}
 		}
 	}
