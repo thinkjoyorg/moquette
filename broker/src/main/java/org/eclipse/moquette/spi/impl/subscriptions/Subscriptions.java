@@ -18,9 +18,12 @@ import com.google.common.collect.Sets;
 public class Subscriptions {
 	Token m_token;
 	Set<Subscription> subs = Sets.newHashSet();
-
-	//空间换时间
+	/*
+	 * 空间换时间
+	 */
+	//以topic为key，订阅者集合为值的缓存
 	Map<String, Set<Subscription>> topicSubCache = Maps.newHashMap();
+	//以clientID为key，订阅者集合为值得缓存
 	Map<String, Set<Subscription>> clientIDSubCache = Maps.newHashMap();
 
 	Token getToken() {
@@ -76,8 +79,8 @@ public class Subscriptions {
 	}
 
 	void removeMatchedSubscription(String topic, final String clientID) {
-		Set<Subscription> temp = this.findAllByClientID(clientID);
-
+		Set<Subscription> temp = findAllByClientID(clientID);
+		//必须将temp重新赋值，以防止迭代异常。
 		Set<Subscription> subscriptions = Sets.newHashSet(temp);
 
 		for (Subscription subscription : subscriptions) {
@@ -95,6 +98,7 @@ public class Subscriptions {
 
 		boolean removed = subscriptions.remove(s);
 		if (removed) {
+			//当topicCache中该topic已经没有订阅者了，删除之。
 			if (subscriptions.size() > 0) {
 				topicSubCache.put(s.getTopicFilter(), subscriptions);
 			} else {
@@ -109,6 +113,7 @@ public class Subscriptions {
 
 		boolean removed = subscriptions.remove(s);
 		if (removed) {
+			//当clientIDCache中该clientID已经没有订阅者了，删除之。
 			if (subscriptions.size() > 0) {
 				clientIDSubCache.put(s.getClientId(), subscriptions);
 			} else {
@@ -126,17 +131,16 @@ public class Subscriptions {
 	}
 
 	void removeClientSubscriptions(String clientID) {
-		Set<Subscription> temp = clientIDSubCache.get(clientID);
-
+		Set<Subscription> temp = findAllByClientID(clientID);
+		//必须将temp重新赋值，以防止迭代异常。
 		Set<Subscription> subscriptions = Sets.newHashSet(temp);
 
-		if (subscriptions != null) {
-			for (Subscription subscription : subscriptions) {
-				subs.remove(subscription);
-				removeSubFromClientIDCache(subscription);
-				removeSubFromTopicCache(subscription);
-			}
+		for (Subscription subscription : subscriptions) {
+			subs.remove(subscription);
+			removeSubFromClientIDCache(subscription);
+			removeSubFromTopicCache(subscription);
 		}
+
 	}
 
 

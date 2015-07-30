@@ -17,11 +17,16 @@ package org.eclipse.moquette.server;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 import java.util.Properties;
 
 import cn.thinkjoy.cloudstack.cache.RedisRepository;
+import cn.thinkjoy.cloudstack.cache.RedisRepositoryFactory;
 import cn.thinkjoy.im.common.ClientIds;
+import cn.thinkjoy.im.common.IMConfig;
 import cn.thinkjoy.im.common.PlatformType;
+import com.google.common.collect.Lists;
+import org.eclipse.moquette.spi.impl.thinkjoy.TopicRouterRepository;
 import org.eclipse.paho.client.mqttv3.*;
 import org.eclipse.paho.client.mqttv3.persist.MqttDefaultFilePersistence;
 import org.junit.*;
@@ -61,7 +66,7 @@ public class ServerIntegrationPahoTest {
 	    File dbFile = new File(org.eclipse.moquette.commons.Constants.DEFAULT_MOQUETTE_STORE_MAP_DB_FILENAME);
 	    assertFalse(String.format("The DB storagefile %s already exists", org.eclipse.moquette.commons.Constants.DEFAULT_MOQUETTE_STORE_MAP_DB_FILENAME), dbFile.exists());
 
-//	    jedis = RedisRepositoryFactory.getRepository(IMConfig.CACHE_TOPIC_ROUTING_TABLE.get());
+	    jedis = RedisRepositoryFactory.getRepository(IMConfig.CACHE_TOPIC_ROUTING_TABLE.get());
 	    startServer();
 
 	    String clientID = ClientIds.generateClientId("zl", "gbdai", PlatformType.Android);
@@ -543,6 +548,33 @@ public class ServerIntegrationPahoTest {
 //		assertEquals("00000000", redisRepository.get("token:00000000"));
 //		redisRepository.set("token:00000000","00000000");
 
+
+	}
+
+	@Test
+	public void testAddBatch() throws Exception {
+
+		List<String> topics = Lists.newArrayList("t1", "t2", "t3");
+
+		long s = System.currentTimeMillis();
+//		for (int i = 0; i < 1; i++) {
+//		}
+		TopicRouterRepository.addBatch(topics);
+		long e = System.currentTimeMillis() - s;
+		System.out.println("addBatch takes : " + e + "ms");
+
+//		MqttConnectOptions ops = new MqttConnectOptions();
+//		ops.setUserName("00000000");
+//		ops.setPassword("111111".toCharArray());
+//		m_client.connect(ops);
+//		m_client.subscribe("t1");
+//		m_client.subscribe("t2");
+//		m_client.subscribe("t3");
+
+	}
+
+	@Test
+	public void testCleanBatch() throws Exception {
 
 	}
 }

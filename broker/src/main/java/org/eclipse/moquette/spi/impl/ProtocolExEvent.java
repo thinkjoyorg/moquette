@@ -11,6 +11,9 @@ import org.eclipse.moquette.spi.impl.events.ProtocolEvent;
  * @version 1.0
  */
 
+/**
+ * 扩展的ProtocolExEvent事件，目前主要用于处理连接消息(ConnectMessage)。
+ */
 public class ProtocolExEvent extends ProtocolEvent {
 
 	protected AnnotationSupport annotationSupport;

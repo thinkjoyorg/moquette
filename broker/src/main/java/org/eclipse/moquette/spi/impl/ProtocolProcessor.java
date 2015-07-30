@@ -231,7 +231,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
 			boolean cleanSession = (Boolean) oldSession.getAttribute(NettyChannel.ATTR_KEY_CLEANSESSION);
 			if (cleanSession) {
 				//cleanup topic subscriptions
-				cleanSession(msg.getClientID());
+				cleanSessionSafety(msg.getClientID());
 			}
 
 			oldSession.close(false);
@@ -330,7 +330,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
 		m_messagesStore.removeMessageInSession(clientID, messageID);
 	}
 
-	private void cleanSession(String clientID) {
+	private void cleanSessionSafety(String clientID) {
 		LOG.info("cleaning old saved subscriptions for client [{}]", clientID);
 		//remove from log all subscriptions
 		lock.lock();
@@ -346,7 +346,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
 		}
 	}
 
-	private void cleanSessionWithoutLock(String clientID) {
+	private void cleanSession(String clientID) {
 //		LOG.info("cleaning old saved subscriptions for client [{}]", clientID);
 		//remove from log all subscriptions
 		m_sessionsStore.wipeSubscriptions(clientID);
@@ -432,7 +432,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
 	 * Flood the subscribers with the message to notify. MessageID is optional and should only used for QoS 1 and 2
 	 */
 	void forward2Subscribers(String topic, AbstractMessage.QOSType pubQos, ByteBuffer origMessage,
-	                                 boolean retain, Integer messageID) {
+	                         boolean retain, Integer messageID) {
 		LOG.debug("forward2Subscribers republishing to existing subscribers that matches the topic {}", topic);
 //		if (LOG.isDebugEnabled()) {
 //			LOG.debug("content [{}]", DebugUtils.payload2Str(origMessage));
@@ -507,6 +507,8 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
 		}
 //		LOG.debug("clientIDs are {}", m_clientIDs);
 		if (m_clientIDs.get(clientId) == null) {
+			//重新清理异常的订阅者
+			subscriptions.removeSubscription(topic, clientId);
 			LOG.error("Can't find a ConnectionDescriptor for client [{}] in cache", clientId);
 			throw new RuntimeException(String.format("Can't find a ConnectionDescriptor for client <%s> in cache", clientId));
 		}
@@ -539,6 +541,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
 			}
 //			LOG.debug("clientIDs are {}", m_clientIDs);
 			if (m_clientIDs.get(clientId) == null) {
+
 				LOG.error("Can't find a ConnectionDescriptor for client [{}] in cache", clientId);
 				throw new RuntimeException(String.format("Can't find a ConnectionDescriptor for client %s in cache", clientId));
 			}
@@ -612,34 +615,35 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
 	@MQTTMessage(message = DisconnectMessage.class)
 	void processDisconnect(final ServerChannel session, DisconnectMessage msg) throws InterruptedException {
 		String clientID = (String) session.getAttribute(NettyChannel.ATTR_KEY_CLIENTID);
-		boolean cleanSession = (Boolean) session.getAttribute(NettyChannel.ATTR_KEY_CLEANSESSION);
+
 		Set<Subscription> subscription = m_sessionsStore.getSubscriptionById(clientID);
 		ExtraIoEvent extraIoEvent = new ExtraIoEvent(IoEvent.IoEventType.DISCONNECT, clientID, subscription);
-
 		publishToIoDisruptor(extraIoEvent);
 
-		if (cleanSession) {
+		cleanSession(clientID);
 
-			cleanSessionWithoutLock(clientID);
-		}
 		m_clientIDs.remove(clientID);
+
 		session.close(true);
 
-		LOG.info("DISCONNECT client [{}] with clean session {}", clientID, cleanSession);
+		LOG.info("DISCONNECT client [{}]", clientID);
 
 	}
 
 	void processConnectionLost(final LostConnectionEvent evt) {
 		String clientID = evt.clientID;
-
-		//如果丢失连接必须也要清理客户端信息。
-		Set<Subscription> subscription = m_sessionsStore.getSubscriptionById(clientID);
-		ExtraIoEvent extraIoEvent = new ExtraIoEvent(IoEvent.IoEventType.LOSTCONNECTION, clientID, subscription);
-		publishToIoDisruptor(extraIoEvent);
-
 		//If already removed a disconnect message was already processed for this clientID
 		if (m_clientIDs.remove(clientID) != null) {
-			cleanSessionWithoutLock(clientID);
+
+			//如果丢失连接必须也要清理redis。
+			Set<Subscription> subscription = m_sessionsStore.getSubscriptionById(clientID);
+
+			if (subscription != null && subscription.size() > 0) {
+				ExtraIoEvent extraIoEvent = new ExtraIoEvent(IoEvent.IoEventType.LOSTCONNECTION, clientID, subscription);
+				publishToIoDisruptor(extraIoEvent);
+			}
+
+			cleanSession(clientID);
 		}
 
 		LOG.info("Lost connection with client [{}]", clientID);

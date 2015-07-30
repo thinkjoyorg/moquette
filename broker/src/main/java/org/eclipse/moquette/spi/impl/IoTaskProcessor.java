@@ -7,7 +7,6 @@ import cn.thinkjoy.im.common.ClientIds;
 import cn.thinkjoy.im.protocol.system.KickOrder;
 import com.lmax.disruptor.WorkHandler;
 import org.eclipse.moquette.commons.Constants;
-import org.eclipse.moquette.proto.MQTTException;
 import org.eclipse.moquette.spi.impl.events.ExtraIoEvent;
 import org.eclipse.moquette.spi.impl.events.IoEvent;
 import org.eclipse.moquette.spi.impl.events.MessagingEvent;
@@ -54,7 +53,7 @@ public class IoTaskProcessor implements WorkHandler<ValueEvent> {
 			client.kicker().kick(kickOrder);
 		} catch (Exception e) {
 			LOG.error(e.getMessage(), e);
-			throw new MQTTException(e);
+			throw new RuntimeException(e);
 		}
 	}
 
@@ -107,11 +106,11 @@ public class IoTaskProcessor implements WorkHandler<ValueEvent> {
 				case LOSTCONNECTION:
 					ExtraIoEvent connLostIoEvent = (ExtraIoEvent) ioEvent;
 					Set<Subscription> lostConnSubs = connLostIoEvent.getSubscriptions();
-					if (lostConnSubs != null) {
+//					if (lostConnSubs != null) {
 						for (Subscription s : lostConnSubs) {
 							TopicRouterRepository.clean(s.getTopicFilter());
 						}
-					}
+//					}
 					//clear onlineState
 					OnlineStateRepository.remove(clientID);
 

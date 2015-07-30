@@ -49,8 +49,8 @@ public class MQTTWebSocket {
     
     @OnWebSocketConnect
     public void onConnect(Session session) throws IOException {
-        System.out.printf("Got connect: %s%n", session);
-        LOG.info("Got connect: %s%n", session);
+//        System.out.printf("Got connect: %s%n", session);
+//        LOG.info("Got connect: %s%n", session);
         this.session = session;
         
         //Trivial MQTT Connect message

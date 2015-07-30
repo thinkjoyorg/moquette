@@ -79,7 +79,7 @@ public class ServerIntegrationWebSocketTest {
         client.connect(socket, echoUri, request);
         LOG.info("Connecting to : %s%n", echoUri);
         boolean connected = socket.awaitConnected(4, TimeUnit.SECONDS);
-        
-        assertTrue(connected);
+
+	    assertTrue(connected);
     }
 }
