@@ -75,6 +75,7 @@ public class IoTaskProcessor implements WorkHandler<ValueEvent> {
 							if (Constants.KICK == mutiClientAllowable) {
 								for (String oldClientID : oldClientIDs) {
 									publishForConnectConflict(oldClientID);
+									OnlineStateRepository.remove(oldClientID);
 								}
 
 							} else if (Constants.PREVENT == mutiClientAllowable) {
