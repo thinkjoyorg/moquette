@@ -96,6 +96,7 @@ public class Server {
 	    initDB(jdbcProp);
 
 	    ClusterManagerClientFactory.createClient().register();
+	    System.out.printf("zk registed finished");
 
 	    messaging = SimpleMessaging.getInstance();
 	    messaging.init(m_properties);

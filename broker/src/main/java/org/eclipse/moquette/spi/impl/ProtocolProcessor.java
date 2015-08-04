@@ -44,6 +44,7 @@ import org.eclipse.moquette.spi.ISessionsStore;
 import org.eclipse.moquette.spi.impl.events.*;
 import org.eclipse.moquette.spi.impl.subscriptions.Subscription;
 import org.eclipse.moquette.spi.impl.subscriptions.SubscriptionsStore;
+import org.eclipse.moquette.spi.impl.thinkjoy.OnlineStateRepository;
 import org.eclipse.moquette.spi.impl.thinkjoy.TopicRouterRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -508,7 +509,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
 //		LOG.debug("clientIDs are {}", m_clientIDs);
 		if (m_clientIDs.get(clientId) == null) {
 			//重新清理异常的订阅者
-			subscriptions.removeSubscription(topic, clientId);
+			reClean(clientId);
 			LOG.error("Can't find a ConnectionDescriptor for client [{}] in cache", clientId);
 			throw new RuntimeException(String.format("Can't find a ConnectionDescriptor for client <%s> in cache", clientId));
 		}
@@ -760,6 +761,24 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
 			outEvent.getChannel().write(outEvent.getMessage());
 		}finally {
 			t.setEvent(null);
+		}
+
+	}
+
+	private void reClean(String clientId) {
+
+		try {
+			Set<Subscription> subscription = m_sessionsStore.getSubscriptionById(clientId);
+			for (Subscription sub : subscription) {
+				TopicRouterRepository.clean(sub.getTopicFilter());
+			}
+
+			OnlineStateRepository.remove(clientId);
+
+			cleanSession(clientId);
+		} catch (Exception e) {
+			LOG.error("reClean error");
+			LOG.error(e.getMessage(), e);
 		}
 
 	}

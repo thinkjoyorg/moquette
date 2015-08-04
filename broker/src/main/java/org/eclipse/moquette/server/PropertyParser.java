@@ -32,9 +32,9 @@ public final class PropertyParser {
 		Properties prop = new Properties();
 		if (!file.exists()) {
 			prop.setProperty("driver", "com.mysql.jdbc.Driver");
-			prop.setProperty("url", "jdbc:mysql://10.10.66.12:3306/im");
-			prop.setProperty("username", "root");
-			prop.setProperty("password", "im.db");
+			prop.setProperty("url", "jdbc:mysql://10.10.68.18:3306/im_zhiliao");
+			prop.setProperty("username", "zhiliao");
+			prop.setProperty("password", "zhiliao");
 			return prop;
 		}
 

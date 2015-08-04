@@ -63,7 +63,7 @@
 
         <repository>
             <id>thinkjoy</id>
-            <url>http://repo.thinkjoy.local/content/groups/public/</url>
+            <url>http://repo.thinkjoy.cn/content/groups/public/</url>
             <releases>
                 <enabled>true</enabled>
             </releases>
