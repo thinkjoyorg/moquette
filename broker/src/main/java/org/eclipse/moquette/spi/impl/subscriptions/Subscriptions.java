@@ -1,12 +1,12 @@
 package org.eclipse.moquette.spi.impl.subscriptions;
 
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 
 /**
  * 创建人：xy
@@ -80,8 +80,11 @@ public class Subscriptions {
 
 	void removeMatchedSubscription(String topic, final String clientID) {
 		Set<Subscription> temp = findAllByClientID(clientID);
-		//必须将temp重新赋值，以防止迭代异常。
-		Set<Subscription> subscriptions = Sets.newHashSet(temp);
+        if (temp.size() == 0) {
+            return;
+        }
+        //必须将temp重新赋值，以防止迭代异常。
+        Set<Subscription> subscriptions = Sets.newHashSet(temp);
 
 		for (Subscription subscription : subscriptions) {
 			if (subscription.match(topic)) {
@@ -131,7 +134,11 @@ public class Subscriptions {
 	}
 
 	void removeClientSubscriptions(String clientID) {
-		Set<Subscription> temp = findAllByClientID(clientID);
+        Set<Subscription> temp = findAllByClientID(clientID);
+        if (temp.size() == 0) {
+            return;
+        }
+
 		//必须将temp重新赋值，以防止迭代异常。
 		Set<Subscription> subscriptions = Sets.newHashSet(temp);
 

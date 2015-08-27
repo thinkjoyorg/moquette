@@ -35,13 +35,6 @@ import static org.eclipse.moquette.proto.messages.AbstractMessage.*;
 public class NettyMQTTHandler extends ChannelInboundHandlerAdapter {
     
     private static final Logger LOG = LoggerFactory.getLogger(NettyMQTTHandler.class);
-	//	private final ChannelFutureListener remover = new ChannelFutureListener() {
-//		@Override
-//		public void operationComplete(ChannelFuture future) throws Exception {
-//			remove(future.channel());
-//		}
-//	};
-//	private final ConcurrentHashMapV8<String, NettyChannel> m_channelMapper = new ConcurrentHashMapV8<String, NettyChannel>();
 	private IMessaging m_messaging;
 
 	@Override
@@ -100,18 +93,6 @@ public class NettyMQTTHandler extends ChannelInboundHandlerAdapter {
 			m_messaging.lostConnection(clientID);
 		}
 	}
-
-//	private final void release(NettyChannel channel) {
-//		try {
-//			Object clientID = channel.getAttribute(NettyUtils.getAttribute().ATTR_KEY_CLIENTID);
-//			if (null != clientID) {
-//				LOG.debug("ClientID:[{}] is Inactive!!!", clientID.toString());
-//				m_messaging.lostConnection(channel, (String) clientID);
-//			}
-//		} catch (Throwable th) {
-//			LOG.warn("no resource to clean!", th);
-//		}
-//	}
 
 	public void setMessaging(IMessaging messaging) {
 		m_messaging = messaging;
