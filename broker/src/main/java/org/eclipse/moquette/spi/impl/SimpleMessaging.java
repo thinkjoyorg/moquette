@@ -64,28 +64,12 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 	private boolean benchmarkEnabled = false;
 	private IMessagesStore m_storageService;
 	private ISessionsStore m_sessionsStore;
-	/**
-	 * 将事件分离，用合适的模型处理合适的事件，是提高整体吞吐量的关键。
-	 */
 
-    private Disruptor<ValueEvent> m_disruptor;// publish，subscribe,unsubscribe 事件分发器,单线程模型
-//			io_disruptor;// connect 事件分发器， 多线程模型
-    /**
-	 * lostConn_disruptor; //lost connection 事件分发器，单线程模型。涉及到资源竞争，这里最好使用单线程处理
-	 */
+    private Disruptor<ValueEvent> m_disruptor;
 
     private RingBuffer<ValueEvent> m_ringBuffer;
-//			io_ringBuffer;
-    /**
-	 * lostConn_ringBuffer;
-	 */
 
     private ExecutorService m_executor;
-//			io_executor;
-
-	/**
-	 * lostConn_executor;
-	 */
 
 	private SimpleMessaging() {
 	}
