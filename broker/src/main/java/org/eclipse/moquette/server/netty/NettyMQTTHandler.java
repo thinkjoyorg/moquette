@@ -67,8 +67,8 @@ public class NettyMQTTHandler extends ChannelInboundHandlerAdapter {
 	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
 		LOG.warn("NettyMQTTHandler exceptionCaught!");
 		try {
-			release(ctx);
-		} catch (Throwable th) {
+            release(ctx);
+        } catch (Throwable th) {
 			LOG.warn("no resource to clean!", th);
 		} finally {
 			if (ctx.channel().isActive()) ctx.close(/*false*/);

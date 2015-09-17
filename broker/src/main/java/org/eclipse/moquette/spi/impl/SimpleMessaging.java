@@ -15,15 +15,8 @@
  */
 package org.eclipse.moquette.spi.impl;
 
-import java.util.Properties;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-
 import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.RingBuffer;
-import com.lmax.disruptor.WorkHandler;
 import com.lmax.disruptor.dsl.Disruptor;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import org.eclipse.moquette.commons.Constants;
@@ -42,6 +35,12 @@ import org.eclipse.moquette.spi.impl.thinkjoy.AreaAuthenticator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Properties;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
 /**
  *
  * Singleton class that orchestrate the execution of the protocol.
@@ -53,21 +52,13 @@ import org.slf4j.LoggerFactory;
  * @author andrea
  */
 
-/**
- * 将事件分为两类进行分发：一类是带有io操作的事件(connect, subscribe)，一类不带io操作的事件(publish)。
- * 带有io操作的事件，被多线程分发器(io_disruptor)所分发
- * 不带io操作的事件，被单线程分发器(m_disruptor)所分发。
- */
 public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 
 	private static final Logger LOG = LoggerFactory.getLogger(SimpleMessaging.class);
 	private static SimpleMessaging INSTANCE;
 	private final ProtocolProcessor m_processor = new ProtocolProcessor();
 	private final AnnotationSupport annotationSupport = new AnnotationSupport();
-	private final String formatString = "%d | %f |  %d \n";
 	CountDownLatch m_stopLatch;
-	long delay = 0L;
-	long count = 0L;
 	private SubscriptionsStore subscriptions;
 
 	private boolean benchmarkEnabled = false;
@@ -77,20 +68,20 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 	 * 将事件分离，用合适的模型处理合适的事件，是提高整体吞吐量的关键。
 	 */
 
-	private Disruptor<ValueEvent> m_disruptor,// publish，subscribe,unsubscribe 事件分发器,单线程模型
-			io_disruptor;// connect 事件分发器， 多线程模型
-	/**
+    private Disruptor<ValueEvent> m_disruptor;// publish，subscribe,unsubscribe 事件分发器,单线程模型
+//			io_disruptor;// connect 事件分发器， 多线程模型
+    /**
 	 * lostConn_disruptor; //lost connection 事件分发器，单线程模型。涉及到资源竞争，这里最好使用单线程处理
 	 */
 
-	private RingBuffer<ValueEvent> m_ringBuffer,
-			io_ringBuffer;
-	/**
+    private RingBuffer<ValueEvent> m_ringBuffer;
+//			io_ringBuffer;
+    /**
 	 * lostConn_ringBuffer;
 	 */
 
-	private ExecutorService m_executor,
-			io_executor;
+    private ExecutorService m_executor;
+//			io_executor;
 
 	/**
 	 * lostConn_executor;
@@ -120,41 +111,18 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 
 	private void initRingBuffer() {
 		m_ringBuffer = m_disruptor.getRingBuffer();
-		io_ringBuffer = io_disruptor.getRingBuffer();
-		//lostConn_ringBuffer = lostConn_disruptor.getRingBuffer();
 	}
 
 	private void startDisruptor() {
 		m_disruptor.handleEventsWith(this);
 		m_disruptor.start();
 
-		io_disruptor.handleEventsWithWorkerPool(create());
-		io_disruptor.start();
-
-		//lostConn_disruptor.handleEventsWith(new LostConnProcessor());
-		//lostConn_disruptor.start();
 	}
 
 	private void initDisruptor() {
 		m_executor = Executors.newSingleThreadExecutor(new DefaultThreadFactory("MessagingDispatcher"));
-//		lostConn_executor = Executors.newSingleThreadExecutor(new DefaultThreadFactory("LostConnMessagingDispatcher"));
-		io_executor = Executors.newFixedThreadPool(Constants.wThreads + 1, new DefaultThreadFactory("IoMessagingDispatcher"));
-
 		m_disruptor = new Disruptor<>(ValueEvent.EVENT_FACTORY, Constants.SIZE_RINGBUFFER, m_executor);
-		io_disruptor = new Disruptor<>(ValueEvent.EVENT_FACTORY, Constants.SIZE_RINGBUFFER, io_executor);
-//		lostConn_disruptor = new Disruptor<>(ValueEvent.EVENT_FACTORY, Constants.SIZE_RINGBUFFER, lostConn_executor);
-
 	}
-
-	private final WorkHandler[] create() {
-		int size = Constants.wThreads + 1;
-		WorkHandler[] handlers = new WorkHandler[size];
-		for (int i = 0; i < handlers.length; i++) {
-			handlers[i] = new IoMessagingProcessor();
-		}
-		return handlers;
-	}
-
 	private void disruptorPublish(MessagingEvent msgEvent) {
 		LOG.debug("disruptorPublish publishing event {}", msgEvent);
 		long sequence = m_ringBuffer.next();
@@ -165,55 +133,17 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 		m_ringBuffer.publish(sequence);
 	}
 
-//	private void publishToLostConnDisruptor(MessagingEvent msgEvent) {
-//		LOG.debug("publishToLostConnDisruptor publishing event {}", msgEvent);
-//		long sequence = lostConn_ringBuffer.next();
-//		ValueEvent event = lostConn_ringBuffer.get(sequence);
-//
-//		event.setEvent(msgEvent);
-//
-//		lostConn_ringBuffer.publish(sequence);
-//	}
 
-	private void publishToIoDisruptor(MessagingEvent msgEvent) {
-		LOG.debug("publishToIoDisruptor publishing event {}", msgEvent);
-		long sequence = io_ringBuffer.next();
-		ValueEvent event = io_ringBuffer.get(sequence);
-
-		event.setEvent(msgEvent);
-
-		io_ringBuffer.publish(sequence);
-
-	}
 
 	@Override
 	public void lostConnection(String clientID) {
-//		publishToLostConnDisruptor(new LostConnExEvent(clientID,m_processor));
 		disruptorPublish(new LostConnectionEvent(clientID));
 	}
 
 	@Override
 	public void handleProtocolMessage(ServerChannel session, AbstractMessage msg) {
-		if (hasIoLogic(msg)) {
-			publishToIoDisruptor(new ProtocolExEvent(session, msg, annotationSupport));
-		} else {
-			disruptorPublish(new ProtocolEvent(session, msg));
-		}
-	}
-
-	/**
-	 * has io logic,  usually need thread pool .
-	 *
-	 * @param msg
-	 * @return
-	 */
-	private final boolean hasIoLogic(AbstractMessage msg) {
-		if (msg.getMessageType() == AbstractMessage.CONNECT/** || msg.getMessageType() == AbstractMessage.SUBSCRIBE*/) {
-			return true;
-		} else {
-			return false;
-		}
-	}
+        disruptorPublish(new ProtocolEvent(session, msg));
+    }
 
 	@Override
 	public void stop() {
@@ -238,10 +168,8 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 
 	private void destory() {
 		m_executor.shutdown();
-		io_executor.shutdown();
 		m_disruptor.shutdown();
-		io_disruptor.shutdown();
-	}
+    }
 
 	@Override
 	public void onEvent(ValueEvent t, long l, boolean bln) throws Exception {
@@ -258,10 +186,7 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 		}
 		if (evt instanceof LostConnectionEvent) {
 			LostConnectionEvent lostEvt = (LostConnectionEvent) evt;
-			long start = System.nanoTime();
 			m_processor.processConnectionLost(lostEvt);
-			long deley = System.nanoTime() - start;
-			LOG.info("processed lost connection takes [{}] ms", deley / 1000000);
 			return;
 		}
 
@@ -269,39 +194,36 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 			ServerChannel session = ((ProtocolEvent) evt).getSession();
 			AbstractMessage message = ((ProtocolEvent) evt).getMessage();
 			try {
-				if (benchmarkEnabled && message.getMessageType() == AbstractMessage.PUBLISH) {
-					++count;
-					long startTime = System.nanoTime();
-					annotationSupport.dispatch(session, message);
-					long l2 = System.nanoTime() - startTime;
-					delay += l2;
-					LOG.info("processed type [{}] msg takes [{}] ms", message.getMessageType(), l2 / 1000000);
-					if (count % 10 == 0) {
-						long p = m_ringBuffer.getCursor();
-						long backlog = Utils.count(p, l);
-						long l1 = delay / 1000000;
-						double r = 0.0;
-						if (l1 == 0) {
-							r = Double.POSITIVE_INFINITY;
-						} else {
-							r = count / l1;
-						}
-						System.out.format(formatString, count, r, backlog);
-					}
-				} else {
-					annotationSupport.dispatch(session, message);
-				}
-
-			} catch (Throwable th) {
+                annotationSupport.dispatch(session, message);
+            } catch (Throwable th) {
 				LOG.error("Serious error processing the message {} for {}", message, th);
 			}
 		}
 
+        if (benchmarkEnabled) {
+            printDisruptorBacklog(l);
+        }
 
 	}
 
-	private void processInit(Properties props) {
-		benchmarkEnabled = Boolean.parseBoolean(System.getProperty("moquette.processor.benchmark", "false"));
+    /**
+     * 当积压的事件超过100(可配置)个时，打印出积压的事件数量，起到报警作用
+     *
+     * @param l
+     */
+    private void printDisruptorBacklog(long l) {
+        long cursor = m_disruptor.getCursor();
+        long backlog = cursor - l;
+        if (backlog < 0) {
+            backlog = 0;
+        }
+        if (backlog > 100) {
+            LOG.info("MessagingDisruptor also has [{}] events was un-used", backlog);
+        }
+    }
+
+    private void processInit(Properties props) {
+        benchmarkEnabled = Boolean.parseBoolean(System.getProperty("moquette.processor.benchmark", "false"));
 
 		//TODO use a property to select the storage path
 		//TODO 此版本不需要持久化
@@ -312,18 +234,8 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 
 		m_storageService.initStore();
 
-		//List<Subscription> storedSubscriptions = m_sessionsStore.listAllSubscriptions();
-		//subscriptions.init(storedSubscriptions);
 		subscriptions.init(m_sessionsStore);
 
-//	    String passwdPath = props.getProperty(org.eclipse.moquette.commons.Constants.PASSWORD_FILE_PROPERTY_NAME, "");
-//	    String configPath = System.getProperty("moquette.path", null);
-//	    IAuthenticator authenticator;
-//        if (passwdPath.isEmpty()) {
-//            authenticator = new AcceptAllAuthenticator();
-//        } else {
-//            authenticator = new FileAuthenticator(configPath, passwdPath);
-//        }
 		IAuthenticator authenticator = new AreaAuthenticator();
 
 		m_processor.init(subscriptions, m_storageService, m_sessionsStore, authenticator);
@@ -333,16 +245,8 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 	private void processStop() {
 		LOG.debug("processStop invoked");
 		m_storageService.close();
-//		LOG.debug("subscription tree {}", subscriptions.dumpTree());
-//        m_eventProcessor.halt();
-//        m_executor.shutdown();
 
 		subscriptions = null;
 		m_stopLatch.countDown();
-
-//		if (benchmarkEnabled) {
-//			//log metrics
-//			histogram.outputPercentileDistribution(System.out, 1000.0);
-//		}
 	}
 }

@@ -51,5 +51,5 @@ MOQUETTE_PATH=$MOQUETTE_HOME/
 #LOG_FILE_LEVEL=fine
 JAVA_OPTS_SCRIPT="-XX:+HeapDumpOnOutOfMemoryError -Djava.awt.headless=true"
 
-nohup $JAVA -server -Xmx4096m -Xms4096m -XX:PermSize=128M -XX:MaxPermSize=256M -XX:+DisableExplicitGC -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:+PrintHeapAtGC -Xloggc:gc.log $JAVA_OPTS $JAVA_OPTS_SCRIPT -Dio.netty.allocator.type=pooled -Dmoquette.processor.benchmark=true -Dlogback.configurationFile="file:$LOG_FILE" -Dmoquette.path="$MOQUETTE_PATH" -cp "$MOQUETTE_HOME/lib/moquette-broker-0.7.1-final.jar:$MOQUETTE_HOME/lib/*" org.eclipse.moquette.server.Server >/dev/null 2>$1 &
+$JAVA -server -Xmx4096m -Xms4096m -XX:PermSize=128M -XX:MaxPermSize=256M -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:+PrintHeapAtGC -Xloggc:gc.log $JAVA_OPTS $JAVA_OPTS_SCRIPT -Dio.netty.allocator.type=pooled -Dmoquette.processor.benchmark=true -Dlogback.configurationFile="file:$LOG_FILE" -Dmoquette.path="$MOQUETTE_PATH" -cp "$MOQUETTE_HOME/lib/*" org.eclipse.moquette.server.Server
 
