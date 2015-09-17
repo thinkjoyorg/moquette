@@ -220,7 +220,6 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
 
         session.setIdleTime(Math.round(keepAlive * 1.5f));
 
-
         ConnAckMessage okResp = new ConnAckMessage();
         okResp.setReturnCode(ConnAckMessage.CONNECTION_ACCEPTED);
 
@@ -327,14 +326,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
 
     private void cleanSession(String clientID) {
 //		LOG.info("cleaning old saved subscriptions for client [{}]", clientID);
-        //remove from log all subscriptions
-        m_sessionsStore.wipeSubscriptions(clientID);
         subscriptions.removeForClient(clientID);
-
-        //remove also the messages stored of type QoS1/2
-        m_messagesStore.dropMessagesInSession(clientID);
-
-
     }
 
     @MQTTMessage(message = PublishMessage.class)
@@ -352,16 +344,6 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
         LOG.info("PUBLISH from clientID [{}] on topic [{}] with QoS [{}]", clientID, topic, qos);
 
         forward2Subscribers(topic, qos, message, retain, messageID);
-
-        //重点关注
-        if (retain) {
-            if (qos == AbstractMessage.QOSType.MOST_ONE) {
-                //QoS == 0 && retain => clean old retained
-                m_messagesStore.cleanRetained(topic);
-            } else {
-                m_messagesStore.storeRetained(topic, message, qos);
-            }
-        }
     }
 
     /**
