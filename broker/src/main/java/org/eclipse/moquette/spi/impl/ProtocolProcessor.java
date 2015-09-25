@@ -18,6 +18,7 @@ package org.eclipse.moquette.spi.impl;
 import cn.thinkjoy.im.api.client.IMClient;
 import cn.thinkjoy.im.common.ClientIds;
 import cn.thinkjoy.im.protocol.system.KickOrder;
+import com.google.common.collect.Sets;
 import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.dsl.Disruptor;
@@ -45,10 +46,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -218,7 +216,9 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
         //used to track the client in the subscription and publishing phases.
         session.setAttribute(NettyChannel.ATTR_KEY_CLIENTID, msg.getClientID());
 
-        session.setIdleTime(Math.round(keepAlive * 1.5f));
+        //TODO: 暂时不用，会引起bug: https://github.com/andsel/moquette/issues/102
+        //目前心跳策略为，服务端和客户端先协商好，而不进行动态协商。
+//        session.setIdleTime(Math.round(keepAlive * 1.5f));
 
         ConnAckMessage okResp = new ConnAckMessage();
         okResp.setReturnCode(ConnAckMessage.CONNECTION_ACCEPTED);
@@ -247,7 +247,11 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
                     if (oldClientIDs.size() > 0) {
                         if (Constants.KICK == mutiClientAllowable) {
                             for (String oldClientID : oldClientIDs) {
-                                publishForConnectConflict(oldClientID);
+                                //如果旧clientID和当前clientID相同，说明是客户端断开重连，不踢
+                                //反之，发送互踢消息
+                                if (!Objects.equals(oldClientID, clientID)) {
+                                    publishForConnectConflict(oldClientID);
+                                }
                                 OnlineStateRepository.remove(oldClientID);
                             }
 
@@ -259,10 +263,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
 
                 }
 
-                // put client online
-                if (!ClientIds.getAccountArea(clientID).equals(Constants.SYS_AREA)) {
-                    OnlineStateRepository.put(clientID);
-                }
+                OnlineStateRepository.put(clientID);
 
             }
         });
@@ -406,12 +407,13 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
         final String clientID = (String) session.getAttribute(NettyChannel.ATTR_KEY_CLIENTID);
 
         final Set<Subscription> subs = m_sessionsStore.getSubscriptionById(clientID);
+        Set<Subscription> cloned = Sets.newHashSet(subs);
 
         cleanSession(clientID);
 
         m_clientIDs.remove(clientID);
 
-        cleanAsync(clientID, subs);
+        cleanAsync(clientID, cloned);
 
         session.close(true);
 
@@ -450,12 +452,14 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
 
             //如果丢失连接必须也要清理redis。
             Set<Subscription> subscription = m_sessionsStore.getSubscriptionById(clientID);
-
-            if (subscription != null && subscription.size() > 0) {
-                cleanAsync(clientID, subscription);
-            }
+            Set<Subscription> cloned = Sets.newHashSet(subscription);
 
             cleanSession(clientID);
+
+            if (subscription != null && cloned.size() > 0) {
+                cleanAsync(clientID, cloned);
+            }
+
         }
 
         LOG.info("Lost connection with client [{}]", clientID);
@@ -475,7 +479,6 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
         for (String topic : topics) {
             subscriptions.removeSubscription(topic, clientID);
             m_sessionsStore.removeSubscription(topic, clientID);
-            TopicRouterRepository.clean(topic);
         }
         //ack the client
         UnsubAckMessage ackMessage = new UnsubAckMessage();
@@ -604,8 +607,9 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
 
         try {
             Set<Subscription> subscription = m_sessionsStore.getSubscriptionById(clientId);
+            Set<Subscription> cloned = Sets.newHashSet(subscription);
             cleanSession(clientId);
-            cleanAsync(clientId, subscription);
+            cleanAsync(clientId, cloned);
         } catch (Exception e) {
             LOG.error("reclean error");
             LOG.error(e.getMessage(), e);

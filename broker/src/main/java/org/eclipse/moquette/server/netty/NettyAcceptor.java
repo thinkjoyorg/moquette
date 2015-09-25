@@ -15,15 +15,6 @@
  */
 package org.eclipse.moquette.server.netty;
 
-import javax.net.ssl.KeyManagerFactory;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLEngine;
-import java.io.IOException;
-import java.io.InputStream;
-import java.security.KeyStore;
-import java.util.List;
-import java.util.Properties;
-
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
@@ -47,6 +38,15 @@ import org.eclipse.moquette.server.ServerAcceptor;
 import org.eclipse.moquette.spi.IMessaging;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLEngine;
+import java.io.IOException;
+import java.io.InputStream;
+import java.security.KeyStore;
+import java.util.List;
+import java.util.Properties;
 
 /**
  *
@@ -103,12 +103,10 @@ public class NettyAcceptor implements ServerAcceptor {
 	    initFactory(host, port, new PipelineInitializer() {
 		    @Override
 		    void init(ChannelPipeline pipeline) {
-			    pipeline.addFirst("idleStateHandler", new IdleStateHandler(0, 0, Constants.DEFAULT_CONNECT_TIMEOUT));
-			    pipeline.addAfter("idleStateHandler", "idleEventHandler", new MoquetteIdleTimoutHandler());
-//			    pipeline.addLast("logger", new LoggingHandler("Netty", LogLevel.ERROR));
+                pipeline.addFirst("idleStateHandler", new IdleStateHandler(0, 0, Constants.DEFAULT_KEEPALIVE));
+                pipeline.addAfter("idleStateHandler", "idleEventHandler", new MoquetteIdleTimoutHandler());
 			    pipeline.addLast("decoder", new MQTTDecoder());
 			    pipeline.addLast("encoder", new MQTTEncoder());
-			    //pipeline.addLast("metrics", new MessageMetricsHandler(m_metricsCollector));
 			    pipeline.addLast("handler", handler);
 		    }
         });
@@ -136,8 +134,8 @@ public class NettyAcceptor implements ServerAcceptor {
 			    //pipeline.addLast("webSocketHandler", new WebSocketServerProtocolHandler(null, "mqtt"));
 			    pipeline.addLast("ws2bytebufDecoder", new WebSocketFrameToByteBufDecoder());
 			    pipeline.addLast("bytebuf2wsEncoder", new ByteBufToWebSocketFrameEncoder());
-			    pipeline.addFirst("idleStateHandler", new IdleStateHandler(0, 0, Constants.DEFAULT_CONNECT_TIMEOUT));
-			    pipeline.addAfter("idleStateHandler", "idleEventHandler", new MoquetteIdleTimoutHandler());
+                pipeline.addFirst("idleStateHandler", new IdleStateHandler(0, 0, Constants.DEFAULT_KEEPALIVE));
+                pipeline.addAfter("idleStateHandler", "idleEventHandler", new MoquetteIdleTimoutHandler());
 			    pipeline.addLast("decoder", new MQTTDecoder());
 			    pipeline.addLast("encoder", new MQTTEncoder());
 //			    pipeline.addLast("metrics", new MessageMetricsHandler(m_metricsCollector));
@@ -197,7 +195,7 @@ public class NettyAcceptor implements ServerAcceptor {
 
                 pipeline.addLast("ssl", sslHandler);
                 //pipeline.addFirst("metrics", new BytesMetricsHandler(m_metricsCollector));
-                pipeline.addFirst("idleStateHandler", new IdleStateHandler(0, 0, Constants.DEFAULT_CONNECT_TIMEOUT));
+                pipeline.addFirst("idleStateHandler", new IdleStateHandler(0, 0, Constants.DEFAULT_KEEPALIVE));
                 pipeline.addAfter("idleStateHandler", "idleEventHandler", new MoquetteIdleTimoutHandler());
                 //pipeline.addLast("logger", new LoggingHandler("Netty", LogLevel.ERROR));
                 pipeline.addLast("decoder", new MQTTDecoder());
