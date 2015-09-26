@@ -1,7 +1,5 @@
 package org.eclipse.moquette.spi.impl.thinkjoy;
 
-import java.util.List;
-
 import cn.thinkjoy.cloudstack.cache.RedisRepository;
 import cn.thinkjoy.cloudstack.cache.RedisRepositoryFactory;
 import cn.thinkjoy.cloudstack.context.CloudContextFactory;
@@ -16,6 +14,8 @@ import org.springframework.data.redis.core.RedisOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.SessionCallback;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
+
+import java.util.List;
 
 /**
  * 创建人：xy
@@ -133,6 +133,7 @@ public final class TopicRouterRepository {
 				@Override
 				public Object doInRedis(RedisConnection connection) throws DataAccessException {
 					//redisOperations.boundValueOps(key).get();
+
 //					Object val = redisOperations.opsForValue().get(key);
 //					if (null != val) {
 //						if (Integer.parseInt(val.toString()) > 1) {

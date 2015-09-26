@@ -92,6 +92,8 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
     private Disruptor<ValueEvent> mainDisruptor;
     private DefaultEventExecutorGroup taskExecutors = new DefaultEventExecutorGroup(Constants.wThreads, new DefaultThreadFactory("TaskExecutor"));
 
+    private boolean flag = false;
+
     ProtocolProcessor() {
     }
 
@@ -201,7 +203,12 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
             }
 
             oldSession.close(false);
+            //说明客户端是由于网络波动造成的连接丢失
+            //那么服务端清理clientID对应的连接
+            flag = true;
+
             LOG.debug("Existing connection with same client ID [{}], forced to close", msg.getClientID());
+            LOG.info("old session closed");
         }
 
         connectIntervalAsync(msg.getClientID());
@@ -406,19 +413,26 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
     void processDisconnect(final ServerChannel session, DisconnectMessage msg) throws InterruptedException {
         final String clientID = (String) session.getAttribute(NettyChannel.ATTR_KEY_CLIENTID);
 
-        final Set<Subscription> subs = m_sessionsStore.getSubscriptionById(clientID);
-        Set<Subscription> cloned = Sets.newHashSet(subs);
-
-        cleanSession(clientID);
-
         m_clientIDs.remove(clientID);
 
-        cleanAsync(clientID, cloned);
+        cleanAll(clientID);
 
         session.close(true);
 
         LOG.info("DISCONNECT client [{}]", clientID);
 
+    }
+
+    //清理订阅资源和redis资源
+    private void cleanAll(String clientID) {
+        final Set<Subscription> subs = m_sessionsStore.getSubscriptionById(clientID);
+        Set<Subscription> cloned = copy(subs);
+
+        cleanSession(clientID);
+
+        if (cloned != null) {
+            cleanAsync(clientID, cloned);
+        }
     }
 
     /**
@@ -439,6 +453,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
                     OnlineStateRepository.remove(clientID);
                 } catch (Exception e) {
                     LOG.error("cleanAsync failed with clientID [{}]", clientID);
+                    LOG.error(e.getMessage(), e);
                 }
 
             }
@@ -446,24 +461,28 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
     }
 
     void processConnectionLost(final LostConnectionEvent evt) {
-        String clientID = evt.clientID;
-        //If already removed a disconnect message was already processed for this clientID
-        if (m_clientIDs.remove(clientID) != null) {
 
-            //如果丢失连接必须也要清理redis。
-            Set<Subscription> subscription = m_sessionsStore.getSubscriptionById(clientID);
-            Set<Subscription> cloned = Sets.newHashSet(subscription);
+        if (!flag) {
 
-            cleanSession(clientID);
+            String clientID = evt.clientID;
+            //If already removed a disconnect message was already processed for this clientID
+            if (m_clientIDs.remove(clientID) != null) {
 
-            if (subscription != null && cloned.size() > 0) {
-                cleanAsync(clientID, cloned);
+                cleanAll(clientID);
+
             }
-
+            LOG.info("Lost connection with client [{}]", clientID);
         }
+        //重置flag标识
+        flag = false;
 
-        LOG.info("Lost connection with client [{}]", clientID);
+    }
 
+    private Set<Subscription> copy(Set<Subscription> subscription) {
+        if (subscription.size() > 0) {
+            return Sets.newHashSet(subscription);
+        }
+        return null;
     }
 
     /**
@@ -606,10 +625,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
     private void reclean(String clientId) {
 
         try {
-            Set<Subscription> subscription = m_sessionsStore.getSubscriptionById(clientId);
-            Set<Subscription> cloned = Sets.newHashSet(subscription);
-            cleanSession(clientId);
-            cleanAsync(clientId, cloned);
+            cleanAll(clientId);
         } catch (Exception e) {
             LOG.error("reclean error");
             LOG.error(e.getMessage(), e);

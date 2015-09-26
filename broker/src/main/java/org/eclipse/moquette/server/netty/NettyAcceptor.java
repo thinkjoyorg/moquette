@@ -57,8 +57,6 @@ public class NettyAcceptor implements ServerAcceptor {
 	private static final Logger LOG = LoggerFactory.getLogger(NettyAcceptor.class);
     EventLoopGroup m_bossGroup;
     EventLoopGroup m_workerGroup;
-    //BytesMetricsCollector m_metricsCollector = new BytesMetricsCollector();
-	//MessageMetricsCollector m_metricsCollector = new MessageMetricsCollector();
 
 	@Override
 	public void initialize(IMessaging messaging, Properties props) throws IOException {
@@ -87,9 +85,8 @@ public class NettyAcceptor implements ServerAcceptor {
                 .childOption(ChannelOption.SO_KEEPALIVE, true);
         try {
             // Bind and start to accept incoming connections.
-            ChannelFuture f = b.bind(host, port);
+            b.bind(host, port).sync().channel().closeFuture().sync();
             LOG.info("Server binded host: {}, port: {}", host, port);
-            f.sync();
         } catch (InterruptedException ex) {
             LOG.error(null, ex);
         }
