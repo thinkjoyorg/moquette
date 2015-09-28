@@ -204,11 +204,10 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
 
             oldSession.close(false);
             //说明客户端是由于网络波动造成的连接丢失
-            //那么服务端清理clientID对应的连接
+            //那么服务端不清理clientID对应的连接
             flag = true;
 
             LOG.debug("Existing connection with same client ID [{}], forced to close", msg.getClientID());
-            LOG.info("old session closed");
         }
 
         connectIntervalAsync(msg.getClientID());
@@ -431,7 +430,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
         cleanSession(clientID);
 
         if (cloned != null) {
-            cleanAsync(clientID, cloned);
+            cleanRedisAsync(clientID, cloned);
         }
     }
 
@@ -441,7 +440,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
      * @param clientID
      * @param subs
      */
-    private void cleanAsync(final String clientID, final Set<Subscription> subs) {
+    private void cleanRedisAsync(final String clientID, final Set<Subscription> subs) {
         taskExecutors.submit(new Runnable() {
             @Override
             public void run() {
@@ -452,7 +451,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
                     //clear onlineState
                     OnlineStateRepository.remove(clientID);
                 } catch (Exception e) {
-                    LOG.error("cleanAsync failed with clientID [{}]", clientID);
+                    LOG.error("cleanRedisAsync failed with clientID [{}]", clientID);
                     LOG.error(e.getMessage(), e);
                 }
 
@@ -460,6 +459,16 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
         });
     }
 
+
+    /**
+     * 处理客户端连接丢失
+     * 两种情况：1.客户端由于网络不稳定而造成的连接丢失
+     * 2.由于使用同一个clientID进行connect操作,服务端主动断开客户端连接
+     * <p/>
+     * 当发生情况2时flag必定为true
+     *
+     * @param evt
+     */
     void processConnectionLost(final LostConnectionEvent evt) {
 
         if (!flag) {
@@ -620,12 +629,12 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
     /**
      * 清理已经断开连接的client资源
      *
-     * @param clientId
+     * @param clientID
      */
-    private void reclean(String clientId) {
+    private void reclean(String clientID) {
 
         try {
-            cleanAll(clientId);
+            cleanAll(clientID);
         } catch (Exception e) {
             LOG.error("reclean error");
             LOG.error(e.getMessage(), e);

@@ -96,9 +96,9 @@ public final class TopicRouterRepository {
 	}
 
 	/**
-	 * 清除客户端所的topic信息
-	 * 注意： 先要判断topic和nodeid组成的key上的计数器是否大于1，如果大于1，那么可以清除掉该信息，
-	 *       否则需将计数器-1即可。
+     * 清除客户端所有的topic信息
+     * 注意： 先要判断topic和nodeID组成的key上的计数器是否大于1，如果小于等于1，那么可以清除掉该信息，
+     *       否则需将计数器-1即可。
 	 *
 	 * @param topic
 	 */
