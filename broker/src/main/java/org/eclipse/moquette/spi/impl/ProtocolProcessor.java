@@ -174,6 +174,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
         }
 
         if (msg.getClientID() == null || msg.getClientID().length() == 0) {
+            LOG.error("clientID can not be null");
             ConnAckMessage okResp = new ConnAckMessage();
             okResp.setReturnCode(ConnAckMessage.IDENTIFIER_REJECTED);
             session.write(okResp);
@@ -182,12 +183,14 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
         }
 //		handle user authentication
         if (!ClientIds.isValid(msg.getClientID())) {
+            LOG.error("invalid clientID[{}]", msg.getClientID());
             authFail(session);
         }
         if (msg.isUserFlag() && msg.isPasswordFlag()) {
             authAsync(session, msg.getUsername(), msg.getPassword(), msg.getClientID());
 
         } else {
+            LOG.error("userFlag and passwordFlag must give");
             authFail(session);
         }
 
